@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { createPost } from "@/app/actions";
 
 type PostFormProps = {
@@ -11,114 +11,81 @@ type PostFormProps = {
   compact?: boolean;
 };
 
-type FormState = {
-  error?: string;
-  success?: boolean;
-};
+export function PostForm({ roomId, slug, parentId, onCancel, compact }: PostFormProps) {
+  const [nickname, setNickname] = useState("");
+  const [content, setContent] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-const initialState: FormState = {};
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-export function PostForm({
-  roomId,
-  slug,
-  parentId,
-  onCancel,
-  compact = false,
-}: PostFormProps) {
-  const formRef = useRef<HTMLFormElement>(null);
+    const formData = new FormData();
+    formData.append("roomId", roomId);
+    if (slug) formData.append("slug", slug);
+    if (parentId) formData.append("parentId", parentId);
+    formData.append("nickname", nickname);
+    formData.append("content", content);
 
-  const [state, formAction, isPending] = useActionState(
-    async (_prev: FormState, formData: FormData) => {
-      return createPost(formData);
-    },
-    initialState,
-  );
+    const res = await createPost(formData);
+    setLoading(false);
 
-  useEffect(() => {
-    if (state.success) {
-      formRef.current?.reset();
-      onCancel?.();
+    if (res?.error) {
+      setError(res.error);
+    } else {
+      setNickname("");
+      setContent("");
+      if (onCancel) onCancel();
     }
-  }, [state.success, onCancel]);
+  };
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      className={`rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm ${compact ? "mt-3" : ""}`}
-    >
-      <input type="hidden" name="roomId" value={roomId} />
-      {slug ? <input type="hidden" name="slug" value={slug} /> : null}
-      {parentId ? <input type="hidden" name="parentId" value={parentId} /> : null}
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-xs font-medium text-zinc-700 mb-1">요청자</label>
+        <input
+          type="text"
+          placeholder="이름"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          className="w-full sm:w-1/2 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          required
+        />
+      </div>
 
-      <div className="grid gap-4">
-        <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
-          <div>
-            <label htmlFor={`nickname-${parentId ?? "root"}`} className="mb-1.5 block text-sm font-medium text-zinc-700">
-              닉네임
-            </label>
-            <input
-              id={`nickname-${parentId ?? "root"}`}
-              name="nickname"
-              required
-              maxLength={20}
-              placeholder="이름"
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-          <div>
-            <label htmlFor={`password-${parentId ?? "root"}`} className="mb-1.5 block text-sm font-medium text-zinc-700">
-              비밀번호 (4자리)
-            </label>
-            <input
-              id={`password-${parentId ?? "root"}`}
-              name="password"
-              required
-              inputMode="numeric"
-              pattern="\d{4}"
-              maxLength={4}
-              placeholder="0000"
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-        </div>
+      <div>
+        <label className="block text-xs font-medium text-zinc-700 mb-1">내용</label>
+        <textarea
+          placeholder="요청사항을 남겨주세요"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          rows={compact ? 2 : 4}
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          required
+        />
+      </div>
 
-        <div>
-          <label htmlFor={`content-${parentId ?? "root"}`} className="mb-1.5 block text-sm font-medium text-zinc-700">
-            {compact ? "답글" : "내용"}
-          </label>
-          <textarea
-            id={`content-${parentId ?? "root"}`}
-            name="content"
-            required
-            rows={compact ? 3 : 4}
-            placeholder={compact ? "답글을 입력하세요" : "요청사항을 남겨주세요"}
-            className="w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-          />
-        </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
 
-        {state.error ? (
-          <p className="text-sm text-red-600">{state.error}</p>
-        ) : null}
-
-        <div className="flex items-center gap-2">
+      <div className="flex justify-end gap-2">
+        {onCancel && (
           <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100"
           >
-            {isPending ? "저장 중..." : compact ? "답글 등록" : "글 남기기"}
+            취소
           </button>
-          {onCancel ? (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100"
-            >
-              취소
-            </button>
-          ) : null}
-        </div>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {loading ? "등록 중..." : "글 남기기"}
+        </button>
       </div>
     </form>
   );

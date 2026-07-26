@@ -1,115 +1,70 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { nanoid } from "nanoid";
 import { supabase } from "@/lib/supabase";
+import { revalidatePath } from "next/cache";
 
-export async function createRoom() {
-  const slug = nanoid(8);
-
-  const { error } = await supabase.from("rooms").insert({ slug });
-
-  if (error) {
-    throw new Error("방명록 생성에 실패했습니다.");
-  }
-
-  redirect(`/room/${slug}`);
-}
-
+// 게시글 작성
 export async function createPost(formData: FormData) {
-  const roomId = formData.get("roomId") as string;
-  const parentId = formData.get("parentId") as string | null;
-  const nickname = (formData.get("nickname") as string)?.trim();
-  const productName = (formData.get("productName") as string)?.trim();
-  const barcode = (formData.get("barcode") as string)?.trim();
-  const content = (formData.get("content") as string)?.trim();
-  const password = (formData.get("password") as string)?.trim();
+  const room_id = formData.get("room_id") as string;
+  const parent_id = formData.get("parent_id") as string | null;
+  const nickname = formData.get("nickname") as string;
+  const product_name = formData.get("product_name") as string;
+  const barcode = formData.get("barcode") as string | null;
+  const content = formData.get("content") as string;
   const slug = formData.get("slug") as string;
 
-  if (!roomId || !nickname || !content) {
-    return { error: "필수 항목을 입력해 주세요." };
-  }
-
-  const { error } = await supabase.from("posts").insert({
-    room_id: roomId,
-    parent_id: parentId || null,
-    nickname,
-    product_name: parentId ? "답글" : productName,
-    barcode: barcode || null,
-    content,
-    password: parentId ? "0000" : password,
-    completed: false,
-  });
-
-  if (error) {
-    console.error("Supabase Insert Error:", error);
-    return { error: "글 저장에 실패했습니다." };
-  }
+  await supabase.from("posts").insert([
+    {
+      room_id,
+      parent_id: parent_id || null,
+      nickname,
+      product_name: product_name || "",
+      barcode: barcode || null,
+      content,
+      completed: false,
+    },
+  ]);
 
   if (slug) {
-    revalidatePath(`/room/${slug}`);
+    revalidatePath(`/${slug}`);
+  } else {
+    revalidatePath("/");
   }
-  revalidatePath("/");
-  return { success: true };
 }
 
+// 완료 상태 변경
 export async function toggleComplete(formData: FormData) {
-  const id = formData.get("postId") as string;
+  const postId = formData.get("postId") as string;
   const completed = formData.get("completed") === "true";
   const slug = formData.get("slug") as string;
 
-  const { error } = await supabase
-    .from("posts")
-    .update({ completed })
-    .eq("id", id);
-
-  if (error) {
-    return { error: "상태 변경에 실패했습니다." };
-  }
+  await supabase.from("posts").update({ completed }).eq("id", postId);
 
   if (slug) {
-    revalidatePath(`/room/${slug}`);
+    revalidatePath(`/${slug}`);
+  } else {
+    revalidatePath("/");
   }
-  revalidatePath("/");
-  return { success: true };
 }
 
+// 게시글 삭제 (관리자 비밀번호 0371 검증)
 export async function deletePost(formData: FormData) {
-  const id = formData.get("postId") as string;
+  const postId = formData.get("postId") as string;
   const password = formData.get("password") as string;
   const slug = formData.get("slug") as string;
 
-  if (!id || !password) {
-    return { error: "비밀번호를 입력해 주세요." };
+  if (password !== "0371") {
+    return { error: "관리자 비밀번호가 일치하지 않습니다." };
   }
 
-  const { data: post, error: fetchError } = await supabase
-    .from("posts")
-    .select("password")
-    .eq("id", id)
-    .single();
-
-  if (fetchError || !post) {
-    return { error: "게시글을 찾을 수 없습니다." };
-  }
-
-  if (post.password !== password) {
-    return { error: "비밀번호가 일치하지 않습니다." };
-  }
-
-  const { error: deleteError } = await supabase
-    .from("posts")
-    .delete()
-    .eq("id", id);
-
-  if (deleteError) {
-    return { error: "삭제 중 오류가 발생했습니다." };
-  }
+  // 해당 글과 그에 달린 답글까지 모두 삭제
+  await supabase.from("posts").delete().eq("parent_id", postId);
+  await supabase.from("posts").delete().eq("id", postId);
 
   if (slug) {
-    revalidatePath(`/room/${slug}`);
+    revalidatePath(`/${slug}`);
+  } else {
+    revalidatePath("/");
   }
-  revalidatePath("/");
   return { success: true };
 }

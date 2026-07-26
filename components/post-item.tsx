@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import type { PostWithReplies } from "@/lib/types";
-import { PostForm } from "./post-form";
-import { deletePost, toggleComplete } from "@/app/actions";
+import { createPost, deletePost, toggleComplete } from "@/app/actions";
 
 type PostItemProps = {
   post: PostWithReplies;
@@ -12,62 +11,87 @@ type PostItemProps = {
 };
 
 export function PostItem({ post, roomId, slug }: PostItemProps) {
-  const [showReplyForm, setShowReplyForm] = useState(false);
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyNickname, setReplyNickname] = useState("");
+  const [replyContent, setReplyContent] = useState("");
+  
+  // 삭제 모달 상태
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
-  // 완료 상태 토글 핸들러
-  const handleToggleComplete = async () => {
-    const formData = new FormData();
-    formData.append("postId", post.id);
-    formData.append("completed", (!post.completed).toString());
-    if (slug) formData.append("slug", slug);
+  const [isPending, startTransition] = useTransition();
 
-    await toggleComplete(formData);
+  // 완료 상태 토글
+  const handleToggleComplete = () => {
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append("postId", post.id);
+      formData.append("completed", (!post.completed).toString());
+      if (slug) formData.append("slug", slug);
+
+      await toggleComplete(formData);
+    });
   };
 
-  const handleDelete = async (e: React.FormEvent) => {
+  // 삭제 제출 처리
+  const handleDeleteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!deleteTargetId) return;
-    setError("");
-    setLoading(true);
+    setDeleteError("");
 
-    const formData = new FormData();
-    formData.append("postId", deleteTargetId);
-    formData.append("password", password);
-    if (slug) formData.append("slug", slug);
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append("postId", deleteTargetId);
+      formData.append("password", adminPassword);
+      if (slug) formData.append("slug", slug);
 
-    const res = await deletePost(formData);
-    setLoading(false);
+      const res = await deletePost(formData);
+      if (res && res.error) {
+        setDeleteError(res.error);
+      } else {
+        setDeleteTargetId(null);
+        setAdminPassword("");
+      }
+    });
+  };
 
-    if (res?.error) {
-      setError(res.error);
-    } else {
-      setDeleteTargetId(null);
-      setPassword("");
+  // 답글 작성 제출
+  const handleReplySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyNickname.trim() || !replyContent.trim()) {
+      alert("작성자와 내용을 모두 입력해주세요.");
+      return;
     }
+
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append("room_id", roomId);
+      formData.append("parent_id", post.id);
+      formData.append("nickname", replyNickname);
+      formData.append("product_name", "");
+      formData.append("content", replyContent);
+      if (slug) formData.append("slug", slug);
+
+      await createPost(formData);
+      setReplyContent("");
+      setIsReplying(false);
+    });
   };
 
   return (
     <div
-      className={`rounded-2xl border p-5 shadow-sm space-y-4 transition-colors ${
+      className={`rounded-2xl border transition-all shadow-sm p-5 ${
         post.completed
-          ? "bg-emerald-50/50 border-emerald-300"
-          : "bg-white border-zinc-200"
+          ? "bg-zinc-100 border-zinc-200 opacity-60"
+          : "bg-white border-zinc-200 hover:border-zinc-300"
       }`}
     >
-      {/* 메인 게시글 헤더 */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2">
+      {/* 상단 정보 및 버튼 */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1.5 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-zinc-900 text-base">{post.nickname}</span>
-            {post.completed && (
-              <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                ✔ 작업 완료
-              </span>
-            )}
             <span className="text-xs text-zinc-400">
               {new Date(post.created_at).toLocaleString("ko-KR", {
                 month: "short",
@@ -76,61 +100,63 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
                 minute: "2-digit",
               })}
             </span>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="bg-indigo-50 text-indigo-700 text-xs font-semibold px-2.5 py-1 rounded-md">
-              상품명: {post.product_name}
-            </span>
-            {post.barcode && (
-              <span className="bg-zinc-100 text-zinc-600 text-xs px-2.5 py-1 rounded-md font-mono">
-                바코드: {post.barcode}
+            {post.completed && (
+              <span className="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                처리완료
               </span>
             )}
           </div>
+
+          {post.product_name && (
+            <div className="inline-block bg-blue-50 text-blue-700 text-sm font-bold px-3 py-1 rounded-lg border border-blue-100">
+              🛒 상품: {post.product_name}
+              {post.barcode && <span className="text-xs font-normal text-blue-500 ml-2">({post.barcode})</span>}
+            </div>
+          )}
         </div>
 
+        {/* 우측 관리 버튼들 */}
         <div className="flex items-center gap-2">
-          {/* 관리자 완료 체크 버튼 */}
           <button
             onClick={handleToggleComplete}
-            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            disabled={isPending}
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition shadow-sm ${
               post.completed
-                ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                ? "bg-zinc-200 text-zinc-700 hover:bg-zinc-300"
+                : "bg-emerald-600 text-white hover:bg-emerald-700"
             }`}
           >
-            {post.completed ? "완료 취소" : "완료 체크"}
+            {post.completed ? "미완료로 변경" : "처리 완료"}
           </button>
 
           <button
-            onClick={() => setDeleteTargetId(post.id)}
-            className="text-xs text-zinc-400 hover:text-red-600 px-2 py-1 rounded transition-colors"
+            onClick={() => {
+              setDeleteTargetId(post.id);
+              setAdminPassword("");
+              setDeleteError("");
+            }}
+            disabled={isPending}
+            className="px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition border border-red-200"
           >
             삭제
           </button>
         </div>
       </div>
 
-      {/* 상세 요청사항 */}
-      <div
-        className={`text-sm whitespace-pre-wrap p-4 rounded-xl border ${
-          post.completed
-            ? "bg-emerald-50/80 border-emerald-200 text-zinc-700 line-through decoration-zinc-400"
-            : "bg-zinc-50 border-zinc-100 text-zinc-800"
-        }`}
-      >
+      {/* 본문 내용 */}
+      <div className="mt-3 text-zinc-800 text-base whitespace-pre-wrap leading-relaxed bg-zinc-50/50 p-3.5 rounded-xl border border-zinc-100">
         {post.content}
       </div>
 
-      {/* 답글 목록 */}
+      {/* 답글(진행 상황 메모) 목록 */}
       {post.replies && post.replies.length > 0 && (
-        <div className="space-y-3 pl-4 border-l-2 border-indigo-100 mt-4 pt-2">
+        <div className="mt-4 pl-4 border-l-2 border-zinc-200 space-y-3">
           {post.replies.map((reply) => (
-            <div key={reply.id} className="bg-zinc-50/80 rounded-xl p-3 border border-zinc-200/60 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-indigo-900">{reply.nickname}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-zinc-400">
+            <div key={reply.id} className="bg-zinc-50 p-3 rounded-xl border border-zinc-200/60 flex items-start justify-between gap-2">
+              <div className="space-y-1 flex-1">
+                <div className="flex items-center justify-between text-xs text-zinc-500 mb-1">
+                  <span className="font-bold text-zinc-700">{reply.nickname}</span>
+                  <span>
                     {new Date(reply.created_at).toLocaleString("ko-KR", {
                       month: "short",
                       day: "numeric",
@@ -138,67 +164,106 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
                       minute: "2-digit",
                     })}
                   </span>
-                  <button
-                    onClick={() => setDeleteTargetId(reply.id)}
-                    className="text-[10px] text-zinc-400 hover:text-red-600 transition-colors"
-                  >
-                    삭제
-                  </button>
                 </div>
+                <p className="text-sm text-zinc-800 whitespace-pre-wrap">{reply.content}</p>
               </div>
-              <p className="text-xs text-zinc-700 whitespace-pre-wrap">{reply.content}</p>
+              <button
+                onClick={() => {
+                  setDeleteTargetId(reply.id);
+                  setAdminPassword("");
+                  setDeleteError("");
+                }}
+                className="text-[10px] text-zinc-400 hover:text-red-600 px-1 py-0.5 shrink-0"
+              >
+                삭제
+              </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* 답글 달기 버튼 및 폼 */}
-      <div className="pt-2 flex flex-col items-end">
-        {!showReplyForm ? (
+      {/* 답글 작성 버튼 및 입력폼 */}
+      <div className="mt-4 pt-3 border-t border-zinc-100 flex justify-between items-center">
+        {!isReplying ? (
           <button
-            onClick={() => setShowReplyForm(true)}
-            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+            onClick={() => setIsReplying(true)}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg"
           >
-            💬 댓글 달기
+            💬 진행 상황 메모 남기기
           </button>
         ) : (
-          <div className="w-full mt-2">
-            <PostForm
-              roomId={roomId}
-              slug={slug}
-              parentId={post.id}
-              onCancel={() => setShowReplyForm(false)}
-            />
+          <div className="w-full bg-zinc-50 p-3.5 rounded-xl border border-zinc-200 space-y-3 mt-2">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-zinc-700">메모 작성</span>
+              <button
+                onClick={() => setIsReplying(false)}
+                className="text-xs text-zinc-400 hover:text-zinc-600 font-bold"
+              >
+                닫기 ✕
+              </button>
+            </div>
+            <form onSubmit={handleReplySubmit} className="space-y-2.5">
+              <input
+                type="text"
+                placeholder="작성자 이름 (예: 담당자)"
+                value={replyNickname}
+                onChange={(e) => setReplyNickname(e.target.value)}
+                className="w-full text-xs px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                required
+              />
+              <textarea
+                placeholder="내용을 입력하세요..."
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+                rows={2}
+                className="w-full text-xs p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                required
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsReplying(false)}
+                  className="px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-200 rounded-lg font-semibold"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-4 py-1.5 text-xs bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow"
+                >
+                  메모 등록
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </div>
 
-      {/* 삭제 비밀번호 입력 모달 */}
+      {/* 관리자 비밀번호 입력 모달 */}
       {deleteTargetId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
-            <h3 className="text-base font-bold text-zinc-900">
-              {deleteTargetId === post.id ? "게시글 삭제" : "댓글 삭제"}
-            </h3>
-            <p className="text-xs text-zinc-500">글 작성 시 설정했던 비밀번호를 입력해주세요.</p>
-            <form onSubmit={handleDelete} className="space-y-3">
+            <h3 className="text-base font-bold text-zinc-900">관리자 삭제 확인</h3>
+            <p className="text-xs text-zinc-500">삭제하려면 관리자 비밀번호를 입력해주세요.</p>
+            <form onSubmit={handleDeleteSubmit} className="space-y-3">
               <input
                 type="password"
-                placeholder="비밀번호"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="관리자 비밀번호"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
                 className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
                 autoFocus
               />
-              {error && <p className="text-xs text-red-600">{error}</p>}
+              {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setDeleteTargetId(null);
-                    setPassword("");
-                    setError("");
+                    setAdminPassword("");
+                    setDeleteError("");
                   }}
                   className="rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100"
                 >
@@ -206,10 +271,10 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={isPending}
                   className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
                 >
-                  {loading ? "삭제 중..." : "삭제하기"}
+                  {isPending ? "삭제 중..." : "삭제하기"}
                 </button>
               </div>
             </form>

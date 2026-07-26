@@ -5,10 +5,9 @@ import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 import { redirect } from "next/navigation";
 
-// 새로운 방 생성 (자동 생성 방식)
+// 새로운 방 생성
 export async function createRoom() {
   const slug = nanoid(8);
-
   const { error } = await supabase.from("rooms").insert({ slug });
 
   if (error) {
@@ -18,7 +17,7 @@ export async function createRoom() {
   redirect(`/room/${slug}`);
 }
 
-// 게시글 작성
+// 게시글 작성 (부모글 및 답글 공용)
 export async function createPost(formData: FormData) {
   const room_id = formData.get("room_id") as string;
   const parent_id = formData.get("parent_id") as string | null;
@@ -27,6 +26,10 @@ export async function createPost(formData: FormData) {
   const barcode = formData.get("barcode") as string | null;
   const content = formData.get("content") as string;
   const slug = formData.get("slug") as string;
+
+  if (!nickname || !content) {
+    return { error: "작성자와 내용은 필수 입력 항목입니다." };
+  }
 
   const { error } = await supabase.from("posts").insert([
     {

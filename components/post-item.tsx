@@ -19,14 +19,9 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
 
   const handleDelete = async (e: React.FormEvent) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append("postId", post.id);
-    formData.append("password", password);
-    formData.append("roomId", roomId);
-    if (slug) formData.append("slug", slug);
-
-    // 🟢 두 개의 인자(formData, slug)를 전달하도록 수정
-    const res = await deletePost(formData, slug);
+    
+    // 🟢 FormData 대신 deletePost가 받는 형식에 맞게 직접 전달합니다.
+    const res = await deletePost(post.id, password, roomId, slug);
     if (res?.error) {
       setDeleteError(res.error);
     }

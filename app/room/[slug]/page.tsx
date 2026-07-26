@@ -43,7 +43,12 @@ export default async function RoomPage({ params }: PageProps) {
   return (
     <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
       <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-        <h1 className="text-xl font-bold text-zinc-900">🛒 POP 요청 시스템</h1>
+        <div>
+          <h1 className="text-xl font-bold text-zinc-900">🛒 POP 요청 시스템</h1>
+          <p className="text-xs text-zinc-500 mt-1">
+            빈칸에 요청사항 기재해주시고 처리완료되면 사무실로 받으러 오시면 됩니다
+          </p>
+        </div>
         <PostForm roomId={room.id} slug={slug} />
       </div>
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useState, useTransition } from "react";
+import { deletePost } from "@/app/actions";
+import { PostForm } from "@/components/post-form";
 import type { PostWithReplies } from "@/lib/types";
-import { PostItem } from "./post-item";
 
 type PostListProps = {
   posts: PostWithReplies[];
@@ -11,156 +11,158 @@ type PostListProps = {
   slug?: string;
 };
 
-export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
-  const [posts, setPosts] = useState<PostWithReplies[]>(initialPosts);
-  const [newAlert, setNewAlert] = useState(false);
+export function PostList({ posts, roomId, slug }: PostListProps) {
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    setPosts(initialPosts);
-  }, [initialPosts]);
+  const handleDelete = (postId: string) => {
+    setError("");
+    if (passwordInput !== "0371") {
+      setError("관리자 비밀번호가 틀렸습니다. (비밀번호: 0371)");
+      return;
+    }
 
-  // 최초 접속 시 브라우저 시스템 알림 권한 요청
-  useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission === "default") {
-        Notification.requestPermission();
+    startTransition(async () => {
+      const res = await deletePost(postId, passwordInput, slug);
+      if (res && res.error) {
+        setError(res.error);
+      } else {
+        setDeletePasswordModalId(null);
+        setPasswordInput("");
       }
-    }
-  }, []);
-
-  // 브라우저 탭 깜빡임 효과
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (newAlert) {
-      let toggle = false;
-      interval = setInterval(() => {
-        document.title = toggle ? "🚨 [새 요청 도착!] - POP 시스템" : "🛒 [확인해주세요!] - POP 시스템";
-        toggle = !toggle;
-      }, 1000);
-    } else {
-      document.title = "POP 요청 시스템";
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-      document.title = "POP 요청 시스템";
-    };
-  }, [newAlert]);
-
-  // Supabase 실시간 감지 (새 글, 답글, 완료 상태, 삭제 실시간 반영 + 윈도우 푸시 알림)
-  useEffect(() => {
-    const channel = supabase
-      .channel(`room-realtime-${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "posts",
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          const newPost = payload.new as PostWithReplies;
-
-          setPosts((prevPosts) => {
-            if (!newPost.parent_id) {
-              // 새 게시글인 경우에만 알림 울림 및 윈도우 시스템 알림 발동
-              setNewAlert(true);
-
-              if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-                new Notification("🚨 새로운 POP 요청 등록!", {
-                  body: `${newPost.nickname}님이 새로운 상품 요청을 등록했습니다.`,
-                });
-              }
-
-              return [{ ...newPost, replies: [] }, ...prevPosts];
-            } else {
-              // 답글인 경우 알림 없이 해당 부모글 하단에 추가
-              return prevPosts.map((post) => {
-                if (post.id === newPost.parent_id) {
-                  return {
-                    ...post,
-                    replies: [...(post.replies || []), newPost],
-                  };
-                }
-                return post;
-              });
-            }
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "posts",
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          const updatedPost = payload.new as PostWithReplies;
-          setPosts((prevPosts) =>
-            prevPosts.map((p) => {
-              if (p.id === updatedPost.id) {
-                return { ...p, completed: updatedPost.completed };
-              }
-              return p;
-            })
-          );
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "posts",
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          const deletedId = payload.old.id;
-
-          setPosts((prevPosts) => {
-            const filtered = prevPosts.filter((p) => p.id !== deletedId);
-            return filtered.map((post) => ({
-              ...post,
-              replies: (post.replies || []).filter((r) => r.id !== deletedId),
-            }));
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [roomId]);
+    });
+  };
 
   if (posts.length === 0) {
     return (
-      <div className="text-center py-12 text-zinc-400 text-sm bg-white rounded-2xl border border-zinc-200 shadow-sm">
-        아직 등록된 POP 요청이 없습니다.
+      <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200 text-zinc-400 text-sm">
+        아직 등록된 요청이 없습니다. 첫 요청을 남겨보세요!
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 relative">
-      {/* 새 글 등록 시 나타나는 강력한 반짝임 알림 배너 */}
-      {newAlert && (
-        <div className="sticky top-4 z-50 bg-red-600 text-white text-base font-extrabold py-4 px-5 rounded-xl shadow-2xl flex items-center justify-between border-4 border-yellow-300 animate-bounce">
-          <span>🚨 새로운 POP 요청이 등록되었습니다! 확인해주세요! 🛒</span>
-          <button
-            onClick={() => setNewAlert(false)}
-            className="text-xs bg-yellow-400 text-red-900 font-bold hover:bg-yellow-300 px-3 py-1.5 rounded-lg shadow"
-          >
-            확인함 (끄기)
-          </button>
-        </div>
-      )}
-
+    <div className="space-y-4">
       {posts.map((post) => (
-        <PostItem key={post.id} post={post} roomId={roomId} slug={slug} />
+        <div key={post.id} className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-3">
+          {/* 게시글 상단 정보 */}
+          <div className="flex justify-between items-start">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-zinc-900 text-sm">{post.nickname}</span>
+                <span className="text-xs text-zinc-400">
+                  {new Date(post.created_at).toLocaleString("ko-KR", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+              {post.product_name && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-medium">
+                    {post.product_name}
+                  </span>
+                  {post.barcode && <span className="text-zinc-400">바코드: {post.barcode}</span>}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => {
+                setDeletePasswordModalId(post.id);
+                setPasswordInput("");
+                setError("");
+              }}
+              className="text-xs text-zinc-400 hover:text-red-600 transition"
+            >
+              삭제
+            </button>
+          </div>
+
+          {/* 내용 */}
+          <p className="text-zinc-700 text-sm whitespace-pre-wrap leading-relaxed bg-zinc-50 p-3 rounded-xl">
+            {post.content}
+          </p>
+
+          {/* 삭제 비밀번호 모달/입력창 */}
+          {deletePasswordModalId === post.id && (
+            <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
+              <p className="text-xs font-bold text-red-700">관리자 비밀번호를 입력하세요 (0371)</p>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  placeholder="비밀번호"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  className="flex-1 rounded-lg border border-red-300 px-3 py-1.5 text-sm bg-white focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  onClick={() => handleDelete(post.id)}
+                  disabled={isPending}
+                  className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 transition"
+                >
+                  삭제확인
+                </button>
+                <button
+                  onClick={() => setDeletePasswordModalId(null)}
+                  className="bg-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-zinc-300 transition"
+                >
+                  취소
+                </button>
+              </div>
+              {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+            </div>
+          )}
+
+          {/* 🌟 대댓글 영역 */}
+          <div className="mt-4 pt-3 border-t border-zinc-100 space-y-3 pl-4 border-l-2 border-indigo-100">
+            {post.replies && post.replies.length > 0 && (
+              <div className="space-y-2">
+                {post.replies.map((reply) => (
+                  <div key={reply.id} className="bg-zinc-50 p-3 rounded-xl space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-indigo-900">{reply.nickname}</span>
+                      <span className="text-zinc-400">
+                        {new Date(reply.created_at).toLocaleString("ko-KR", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-zinc-700 text-xs whitespace-pre-wrap">{reply.content}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 답글 작성 버튼 및 폼 */}
+            {replyingToId === post.id ? (
+              <div className="pt-2">
+                <PostForm
+                  roomId={roomId}
+                  slug={slug}
+                  parentId={post.id}
+                  onCancel={() => setReplyingToId(null)}
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => setReplyingToId(post.id)}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition"
+              >
+                💬 답글 남기기
+              </button>
+            )}
+          </div>
+        </div>
       ))}
     </div>
   );

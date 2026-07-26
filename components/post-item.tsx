@@ -25,7 +25,6 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
     formData.append("roomId", roomId);
     if (slug) formData.append("slug", slug);
 
-    // 🟢 FormData 딱 1개만 전달하여 타입 에러 원천 차단
     const res = await deletePost(formData);
     if (res?.error) {
       setDeleteError(res.error);
@@ -37,7 +36,7 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
       <div className="flex items-center justify-between mb-2">
         <span className="font-semibold text-zinc-900">{post.nickname}</span>
         <span className="text-xs text-zinc-400">
-          {new Date(post.createdAt).toLocaleDateString()}
+          {new Date(post.created_at).toLocaleDateString()}
         </span>
       </div>
 
@@ -94,7 +93,7 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
               <div className="flex items-center justify-between mb-1">
                 <span className="font-medium text-zinc-800">{reply.nickname}</span>
                 <span className="text-xs text-zinc-400">
-                  {new Date(reply.createdAt).toLocaleDateString()}
+                  {new Date(reply.created_at).toLocaleDateString()}
                 </span>
               </div>
               <p className="text-zinc-600">{reply.content}</p>

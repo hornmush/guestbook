@@ -30,6 +30,7 @@ export function PostForm({ roomId, slug, parentId, onCancel, compact }: PostForm
     if (slug) formData.append("slug", slug);
     if (parentId) formData.append("parentId", parentId);
     formData.append("nickname", nickname);
+    
     if (!parentId) {
       formData.append("productName", productName);
       formData.append("barcode", barcode);
@@ -52,29 +53,28 @@ export function PostForm({ roomId, slug, parentId, onCancel, compact }: PostForm
     }
   };
 
-  // 답글 작성 폼 (작성자 / 댓글만 표시)
+  // 만약 답글(parentId가 있음)인 경우: 작성자와 댓글 내용만 표시
   if (parentId) {
     return (
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <input
-              type="text"
-              placeholder="작성자"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              required
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-3 bg-zinc-50 p-3 rounded-xl border border-zinc-200">
+        <div className="text-xs font-semibold text-indigo-600 mb-1">댓글 달기</div>
+        <div>
+          <input
+            type="text"
+            placeholder="작성자 이름"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            className="w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            required
+          />
         </div>
         <div>
           <textarea
-            placeholder="댓글을 남겨주세요"
+            placeholder="댓글 내용을 입력하세요"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
         </div>
@@ -94,7 +94,7 @@ export function PostForm({ roomId, slug, parentId, onCancel, compact }: PostForm
             disabled={loading}
             className="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {loading ? "등록 중..." : "댓글 달기"}
+            {loading ? "등록 중..." : "등록"}
           </button>
         </div>
       </form>

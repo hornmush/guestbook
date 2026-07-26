@@ -13,130 +13,154 @@ type PostItemProps = {
 
 export function PostItem({ post, roomId, slug }: PostItemProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
-  const [showDeleteForm, setShowDeleteForm] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteError, setDeleteError] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleDeleteSubmit = async (e: React.FormEvent) => {
+  const handleDelete = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
+
     const formData = new FormData();
     formData.append("postId", post.id);
-    formData.append("password", deletePassword);
+    formData.append("password", password);
     if (slug) formData.append("slug", slug);
 
     const res = await deletePost(formData);
+    setLoading(false);
+
     if (res?.error) {
-      setDeleteError(res.error);
+      setError(res.error);
     } else {
-      setDeletePassword("");
-      setShowDeleteForm(false);
+      setShowDeleteModal(false);
     }
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm space-y-3">
-      {/* 상단: 요청자 및 작성일 */}
-      <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-        <div className="flex items-center gap-1.5 text-sm">
-          <span className="text-zinc-500">요청자:</span>
-          <span className="font-bold text-zinc-900">{post.nickname}</span>
-        </div>
-        <span className="text-xs text-zinc-400">
-          {new Date(post.created_at).toLocaleDateString()}
-        </span>
-      </div>
-
-      {/* 상품 정보 (상품명 & 바코드) */}
-      <div className="bg-zinc-50 rounded-xl p-3 space-y-1 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">상품명</span>
-          <span className="font-bold text-zinc-900">{post.product_name}</span>
-        </div>
-        {post.barcode && (
-          <div className="flex items-center gap-2 text-xs text-zinc-600">
-            <span className="text-zinc-400 font-medium">바코드:</span>
-            <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-zinc-200">{post.barcode}</span>
+    <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm space-y-4">
+      {/* 메인 게시글 헤더 (요청자, 상품명, 바코드, 삭제 버튼) */}
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-zinc-900 text-base">{post.nickname}</span>
+            <span className="text-xs text-zinc-400">
+              {new Date(post.created_at).toLocaleString("ko-KR", {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
           </div>
-        )}
-      </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="bg-indigo-50 text-indigo-700 text-xs font-semibold px-2.5 py-1 rounded-md">
+              상품명: {post.product_name}
+            </span>
+            {post.barcode && (
+              <span className="bg-zinc-100 text-zinc-600 text-xs px-2.5 py-1 rounded-md font-mono">
+                바코드: {post.barcode}
+              </span>
+            )}
+          </div>
+        </div>
 
-      {/* 상세 요청사항 */}
-      <div>
-        <span className="block text-xs font-semibold text-zinc-400 mb-1">상세 요청사항</span>
-        <p className="text-sm text-zinc-700 whitespace-pre-wrap">{post.content}</p>
-      </div>
-
-      {/* 하단 버튼 */}
-      <div className="flex items-center justify-between text-xs pt-2 border-t border-zinc-100">
         <button
-          onClick={() => setShowReplyForm(!showReplyForm)}
-          className="text-indigo-600 font-medium hover:underline"
-        >
-          답글
-        </button>
-        <button
-          onClick={() => {
-            setShowDeleteForm(!showDeleteForm);
-            setDeleteError("");
-          }}
-          className="text-zinc-400 hover:text-red-600"
+          onClick={() => setShowDeleteModal(true)}
+          className="text-xs text-zinc-400 hover:text-red-600 px-2 py-1 rounded transition-colors"
         >
           삭제
         </button>
       </div>
 
-      {/* 삭제 비밀번호 입력 폼 (0000 문구 제거됨) */}
-      {showDeleteForm && (
-        <form onSubmit={handleDeleteSubmit} className="mt-3 p-3 bg-zinc-50 rounded-xl space-y-2 border border-zinc-200">
-          <div className="text-xs font-medium text-zinc-700">작성 시 설정한 비밀번호를 입력해주세요</div>
-          <div className="flex gap-2">
-            <input
-              type="password"
-              placeholder="비밀번호"
-              value={deletePassword}
-              onChange={(e) => setDeletePassword(e.target.value)}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-              required
-            />
-            <button
-              type="submit"
-              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 shrink-0"
-            >
-              삭제하기
-            </button>
-          </div>
-          {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
-        </form>
-      )}
+      {/* 상세 요청사항 내용 */}
+      <div className="text-zinc-800 text-sm whitespace-pre-wrap bg-zinc-50 p-4 rounded-xl border border-zinc-100">
+        {post.content}
+      </div>
 
-      {showReplyForm && (
-        <div className="mt-3 pt-3 border-t border-zinc-100">
-          <PostForm
-            roomId={roomId}
-            slug={slug}
-            parentId={post.id}
-            onCancel={() => setShowReplyForm(false)}
-            compact={true}
-          />
+      {/* 답글 목록 표시 */}
+      {post.replies && post.replies.length > 0 && (
+        <div className="space-y-3 pl-4 border-l-2 border-indigo-100 mt-4 pt-2">
+          {post.replies.map((reply) => (
+            <div key={reply.id} className="bg-zinc-50/80 rounded-xl p-3 border border-zinc-200/60 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-indigo-900">{reply.nickname}</span>
+                <span className="text-[10px] text-zinc-400">
+                  {new Date(reply.created_at).toLocaleString("ko-KR", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-700 whitespace-pre-wrap">{reply.content}</p>
+            </div>
+          ))}
         </div>
       )}
 
-      {post.replies && post.replies.length > 0 && (
-        <div className="mt-4 pl-4 border-l-2 border-zinc-100 space-y-3">
-          {post.replies.map((reply) => (
-            <div key={reply.id} className="text-sm space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-zinc-500">요청자:</span>
-                  <span className="font-bold text-zinc-800">{reply.nickname}</span>
-                </div>
-                <span className="text-xs text-zinc-400">
-                  {new Date(reply.created_at).toLocaleDateString()}
-                </span>
+      {/* 답글 달기 버튼 및 폼 영역 */}
+      <div className="pt-2 flex flex-col items-end">
+        {!showReplyForm ? (
+          <button
+            onClick={() => setShowReplyForm(true)}
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            💬 댓글 달기
+          </button>
+        ) : (
+          <div className="w-full mt-2">
+            <PostForm
+              roomId={roomId}
+              slug={slug}
+              parentId={post.id}
+              onCancel={() => setShowReplyForm(false)}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* 삭제 비밀번호 입력 모달 */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
+            <h3 className="text-base font-bold text-zinc-900">게시글 삭제</h3>
+            <p className="text-xs text-zinc-500">글 작성 시 설정했던 비밀번호를 입력해주세요.</p>
+            <form onSubmit={handleDelete} className="space-y-3">
+              <input
+                type="password"
+                placeholder="비밀번호"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                required
+                autoFocus
+              />
+              {error && <p className="text-xs text-red-600">{error}</p>}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setPassword("");
+                    setError("");
+                  }}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {loading ? "삭제 중..." : "삭제하기"}
+                </button>
               </div>
-              <p className="text-zinc-600">{reply.content}</p>
-            </div>
-          ))}
+            </form>
+          </div>
         </div>
       )}
     </div>

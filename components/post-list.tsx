@@ -2,7 +2,6 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { deletePost, toggleComplete } from "@/app/actions";
-import { PostForm } from "@/components/post-form";
 import type { PostWithReplies } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -16,13 +15,11 @@ type PostListProps = {
 export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
   const router = useRouter();
   const [posts, setPosts] = useState<PostWithReplies[]>(initialPosts);
-  const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  // 부모 컴포넌트에서 넘어온 posts가 바뀔 때 상태 동기화
   useEffect(() => {
     setPosts(initialPosts);
   }, [initialPosts]);
@@ -199,52 +196,6 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
               {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
             </div>
           )}
-
-          {/* 대댓글 영역 */}
-          <div className="mt-4 pt-3 border-t border-zinc-100 space-y-3 pl-4 border-l-2 border-indigo-100">
-            {post.replies && post.replies.length > 0 && (
-              <div className="space-y-2">
-                {post.replies.map((reply) => (
-                  <div key={reply.id} className="bg-zinc-50 p-3 rounded-xl space-y-1">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-indigo-900">{reply.nickname}</span>
-                      <span className="text-zinc-400">
-                        {new Date(reply.created_at).toLocaleString("ko-KR", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-zinc-700 text-xs whitespace-pre-wrap">{reply.content}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* 답글 작성 버튼 및 폼 */}
-            {replyingToId === post.id ? (
-              <div className="pt-2">
-                <PostForm
-                  roomId={roomId}
-                  slug={slug}
-                  parentId={post.id}
-                  onCancel={() => {
-                    setReplyingToId(null);
-                    router.refresh();
-                  }}
-                />
-              </div>
-            ) : (
-              <button
-                onClick={() => setReplyingToId(post.id)}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition"
-              >
-                💬 답글 남기기
-              </button>
-            )}
-          </div>
         </div>
       ))}
     </div>

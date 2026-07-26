@@ -25,7 +25,8 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
     formData.append("roomId", roomId);
     if (slug) formData.append("slug", slug);
 
-    const res = await deletePost(formData);
+    // 🟢 두 개의 인자(formData, slug)를 전달하도록 수정
+    const res = await deletePost(formData, slug);
     if (res?.error) {
       setDeleteError(res.error);
     }

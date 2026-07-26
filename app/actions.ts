@@ -24,20 +24,21 @@ export async function createPost(formData: FormData) {
   const productName = (formData.get("productName") as string)?.trim();
   const barcode = (formData.get("barcode") as string)?.trim();
   const content = (formData.get("content") as string)?.trim();
+  const password = (formData.get("password") as string)?.trim();
   const slug = formData.get("slug") as string;
 
-  if (!roomId || !nickname || !productName || !content) {
-    return { error: "필수 항목을 모두 입력해 주세요." };
+  if (!roomId || !nickname || !content) {
+    return { error: "필수 항목을 입력해 주세요." };
   }
 
   const { error } = await supabase.from("posts").insert({
     room_id: roomId,
     parent_id: parentId || null,
     nickname,
-    product_name: productName,
+    product_name: parentId ? "답글" : productName,
     barcode: barcode || null,
     content,
-    password: "0000", // 기본 비밀번호 자동 저장
+    password: parentId ? "0000" : password,
   });
 
   if (error) {
@@ -61,7 +62,6 @@ export async function deletePost(formData: FormData) {
     return { error: "비밀번호를 입력해 주세요." };
   }
 
-  // 데이터베이스에서 해당 글의 비밀번호 확인
   const { data: post, error: fetchError } = await supabase
     .from("posts")
     .select("password")

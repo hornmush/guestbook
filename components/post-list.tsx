@@ -17,21 +17,19 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
   const [newAlert, setNewAlert] = useState(false);
   const router = useRouter();
 
-  // 서버에서 데이터가 갱신될 때 상태 동기화
   useEffect(() => {
     setPosts(initialPosts);
   }, [initialPosts]);
 
-  // 새 글이 등록되면 브라우저 탭 제목을 번갈아 깜빡이게 하는 효과
+  // 브라우저 탭 깜빡임 효과
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (newAlert) {
       let toggle = false;
-      const originalTitle = document.title;
       interval = setInterval(() => {
         document.title = toggle ? "🚨 [새 요청 도착!] - POP 시스템" : "🛒 [확인해주세요!] - POP 시스템";
         toggle = !toggle;
-      }, 1000); // 1초마다 번갈아 변경
+      }, 1000);
     } else {
       document.title = "POP 요청 시스템";
     }
@@ -42,7 +40,7 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
     };
   }, [newAlert]);
 
-  // Supabase 실시간(Realtime) 구독 설정
+  // Supabase 실시간 감지
   useEffect(() => {
     const channel = supabase
       .channel(`room-realtime-${roomId}`)
@@ -55,8 +53,8 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
           filter: `room_id=eq.${roomId}`,
         },
         () => {
-          setNewAlert(true); // 탭 깜빡임 및 상단 배너 활성화
-          router.refresh(); // 최신 데이터로 화면 새로고침
+          setNewAlert(true);
+          router.refresh();
         }
       )
       .subscribe();
@@ -76,13 +74,13 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
 
   return (
     <div className="space-y-4 relative">
-      {/* 새 글 등록 시 나타나는 눈에 띄는 상단 알림 배너 */}
+      {/* 새 글 등록 시 나타나는 강력한 반짝임 알림 배너 */}
       {newAlert && (
-        <div className="sticky top-4 z-50 bg-indigo-600 text-white text-sm font-bold py-3 px-4 rounded-xl shadow-2xl flex items-center justify-between border-2 border-white animate-pulse">
-          <span>🚨 새로운 POP 요청이 도착했습니다! 확인해주세요! 🛒</span>
+        <div className="sticky top-4 z-50 bg-red-600 text-white text-base font-extrabold py-4 px-5 rounded-xl shadow-2xl flex items-center justify-between border-4 border-yellow-300 animate-bounce">
+          <span>🚨 새로운 POP 요청이 등록되었습니다! 확인해주세요! 🛒</span>
           <button
             onClick={() => setNewAlert(false)}
-            className="text-xs bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 rounded-lg border border-indigo-400"
+            className="text-xs bg-yellow-400 text-red-900 font-bold hover:bg-yellow-300 px-3 py-1.5 rounded-lg shadow"
           >
             확인함 (끄기)
           </button>

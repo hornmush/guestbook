@@ -1,55 +1,107 @@
-import { PostForm } from "@/components/post-form";
-import { PostList } from "@/components/post-list";
-import { getPosts } from "@/lib/posts";
 import { supabase } from "@/lib/supabase";
-import Link from "next/link";
+import { PostList } from "@/components/post-list";
+import { PostForm } from "@/components/post-form";
+import type { PostWithReplies } from "@/lib/types";
+import { notFound } from "next/navigation";
 
-export default async function RoomPage({
-  params,
-}: {
+type PageProps = {
   params: Promise<{ slug: string }>;
-}) {
+};
+
+export default async function RoomPage({ params }: PageProps) {
   const { slug } = await params;
 
-  const { data: room, error: roomError } = await supabase
+  // 1. 방 정보 조회
+  const { data: room } = await supabase
     .from("rooms")
     .select("*")
     .eq("slug", slug)
     .single();
 
-  if (roomError || !room) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <h1 className="text-xl font-bold text-zinc-800 mb-2">존재하지 않는 방입니다.</h1>
-        <Link href="/" className="text-indigo-600 hover:underline text-sm">
-          홈으로 돌아가기
-        </Link>
-      </div>
-    );
+  if (!room) {
+    notFound();
   }
 
-  const posts = await getPosts(room.id);
+  // 2. 해당 방의 모든 글(부모글 + 답글) 가져오기
+  const { data: rawPosts } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("room_id", room.id)
+    .order("created_at", { ascending: false });
+
+  // 3. 🌟 핵심: 부모글과 답글을 분리한 뒤, 부모글의 replies에 답글 쏙쏙 집어넣기
+  const parentPosts = rawPosts?.filter((p) => !p.parent_id) || [];
+  const allReplies = rawPosts?.filter((p) => p.parent_id) || [];
+
+  const posts: PostWithReplies[] = parentPosts.map((post) => ({
+    ...post,
+    replies: allReplies
+      .filter((r) => r.parent_id === post.id)
+      // 답글은 오래된 순서대로 정렬하고 싶다면 오름차순 정렬
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+  }));
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8 space-y-8">
-      <div className="flex items-center justify-between">
-        <Link href="/" className="text-sm font-medium text-indigo-600 hover:underline">
-          ← 홈으로
-        </Link>
-        <span className="text-xs text-zinc-400">방 주소: {slug}</span>
+    <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+        <h1 className="text-xl font-bold text-zinc-900">🛒 POP 요청 시스템</h1>
+        <PostForm roomId={room.id} slug={slug} />
       </div>
 
-      <section className="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-zinc-900 mb-4">POP 요청 쓰기</h2>
-        <PostForm roomId={room.id} slug={slug} />
-      </section>
+      <PostList posts={posts} roomId={room.id} slug={slug} />
+    </main>
+  );
+}import { supabase } from "@/lib/supabase";
+import { PostList } from "@/components/post-list";
+import { PostForm } from "@/components/post-form";
+import type { PostWithReplies } from "@/lib/types";
+import { notFound } from "next/navigation";
 
-      <section className="space-y-4">
-        <h2 className="text-lg font-bold text-zinc-900">
-          전체 POP 요청 ({posts.length})
-        </h2>
-        <PostList posts={posts} roomId={room.id} slug={slug} />
-      </section>
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
+
+export default async function RoomPage({ params }: PageProps) {
+  const { slug } = await params;
+
+  // 1. 방 정보 조회
+  const { data: room } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (!room) {
+    notFound();
+  }
+
+  // 2. 해당 방의 모든 글(부모글 + 답글) 가져오기
+  const { data: rawPosts } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("room_id", room.id)
+    .order("created_at", { ascending: false });
+
+  // 3. 🌟 핵심: 부모글과 답글을 분리한 뒤, 부모글의 replies에 답글 쏙쏙 집어넣기
+  const parentPosts = rawPosts?.filter((p) => !p.parent_id) || [];
+  const allReplies = rawPosts?.filter((p) => p.parent_id) || [];
+
+  const posts: PostWithReplies[] = parentPosts.map((post) => ({
+    ...post,
+    replies: allReplies
+      .filter((r) => r.parent_id === post.id)
+      // 답글은 오래된 순서대로 정렬하고 싶다면 오름차순 정렬
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+  }));
+
+  return (
+    <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+        <h1 className="text-xl font-bold text-zinc-900">🛒 POP 요청 시스템</h1>
+        <PostForm roomId={room.id} slug={slug} />
+      </div>
+
+      <PostList posts={posts} roomId={room.id} slug={slug} />
     </main>
   );
 }

@@ -43,12 +43,13 @@ export async function createPost(formData: FormData) {
     },
   ]);
 
+  // 에러 발생 시 Supabase의 구체적인 에러 메시지를 반환하도록 수정
   if (error) {
-    return { error: "게시글 작성 중 오류가 발생했습니다." };
+    return { error: `DB 에러: ${error.message}` };
   }
 
   if (slug) {
-    revalidatePath(`/${slug}`);
+    revalidatePath(`/room/${slug}`);
   } else {
     revalidatePath("/");
   }
@@ -64,7 +65,7 @@ export async function toggleComplete(formData: FormData) {
   await supabase.from("posts").update({ completed }).eq("id", postId);
 
   if (slug) {
-    revalidatePath(`/${slug}`);
+    revalidatePath(`/room/${slug}`);
   } else {
     revalidatePath("/");
   }
@@ -85,7 +86,7 @@ export async function deletePost(formData: FormData) {
   await supabase.from("posts").delete().eq("id", postId);
 
   if (slug) {
-    revalidatePath(`/${slug}`);
+    revalidatePath(`/room/${slug}`);
   } else {
     revalidatePath("/");
   }

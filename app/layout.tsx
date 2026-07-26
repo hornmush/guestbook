@@ -1,33 +1,24 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "무가입 공유 방명록",
-  description: "회원가입 없이 링크 하나로 공유하는 방명록 서비스",
+  title: "칠곡농협 POP 요청",
+  description: "칠곡농협 POP 제작 요청 게시판",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="ko">
+      <body className={`${inter.className} bg-zinc-50 min-h-screen text-zinc-900`}>
+        {children}
+      </body>
     </html>
   );
 }

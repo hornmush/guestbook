@@ -5,7 +5,7 @@ import { createPost } from "@/app/actions";
 
 type PostFormProps = {
   roomId: string;
-  slug?: string; // 👈 선택 사항(? 추가)으로 수정되어 빌드 오류가 해결됩니다.
+  slug?: string;
   parentId?: string;
   onCancel?: () => void;
   compact?: boolean;

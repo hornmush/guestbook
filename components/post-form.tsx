@@ -13,6 +13,8 @@ type PostFormProps = {
 
 export function PostForm({ roomId, slug, parentId, onCancel, compact }: PostFormProps) {
   const [nickname, setNickname] = useState("");
+  const [productName, setProductName] = useState("");
+  const [barcode, setBarcode] = useState("");
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +29,8 @@ export function PostForm({ roomId, slug, parentId, onCancel, compact }: PostForm
     if (slug) formData.append("slug", slug);
     if (parentId) formData.append("parentId", parentId);
     formData.append("nickname", nickname);
+    formData.append("productName", productName);
+    formData.append("barcode", barcode);
     formData.append("content", content);
 
     const res = await createPost(formData);
@@ -36,6 +40,8 @@ export function PostForm({ roomId, slug, parentId, onCancel, compact }: PostForm
       setError(res.error);
     } else {
       setNickname("");
+      setProductName("");
+      setBarcode("");
       setContent("");
       if (onCancel) onCancel();
     }
@@ -55,10 +61,34 @@ export function PostForm({ roomId, slug, parentId, onCancel, compact }: PostForm
         />
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-medium text-zinc-700 mb-1">상품명</label>
+          <input
+            type="text"
+            placeholder="상품명을 입력하세요"
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-zinc-700 mb-1">바코드</label>
+          <input
+            type="text"
+            placeholder="바코드 번호 (선택)"
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+      </div>
+
       <div>
-        <label className="block text-xs font-medium text-zinc-700 mb-1">내용</label>
+        <label className="block text-xs font-medium text-zinc-700 mb-1">상세 요청사항</label>
         <textarea
-          placeholder="요청사항을 남겨주세요"
+          placeholder="상세 요청사항을 남겨주세요"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={compact ? 2 : 4}

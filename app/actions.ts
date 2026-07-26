@@ -21,22 +21,27 @@ export async function createPost(formData: FormData) {
   const roomId = formData.get("roomId") as string;
   const parentId = formData.get("parentId") as string | null;
   const nickname = (formData.get("nickname") as string)?.trim();
+  const productName = (formData.get("productName") as string)?.trim();
+  const barcode = (formData.get("barcode") as string)?.trim();
   const content = (formData.get("content") as string)?.trim();
   const slug = formData.get("slug") as string;
 
-  if (!roomId || !nickname || !content) {
-    return { error: "모든 항목을 입력해 주세요." };
+  if (!roomId || !nickname || !productName || !content) {
+    return { error: "필수 항목을 모두 입력해 주세요." };
   }
 
   const { error } = await supabase.from("posts").insert({
     room_id: roomId,
     parent_id: parentId || null,
     nickname,
+    product_name: productName,
+    barcode: barcode || null,
     content,
-    password: "0000", // 비밀번호 입력란을 없앴으므로 기본값 자동 입력
+    password: "0000",
   });
 
   if (error) {
+    console.error("Supabase Insert Error:", error);
     return { error: "글 저장에 실패했습니다." };
   }
 
@@ -55,7 +60,6 @@ export async function deletePost(formData: FormData) {
     return { error: "필수 정보가 누락되었습니다." };
   }
 
-  // 비밀번호 입력란이 사라졌으므로 바로 삭제 실행
   const { error: deleteError } = await supabase
     .from("posts")
     .delete()

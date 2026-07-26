@@ -4,14 +4,14 @@ import { PostItem } from "@/components/post-item";
 type PostListProps = {
   posts: PostWithReplies[];
   roomId: string;
-  slug: string;
+  slug?: string; // 👈 선택 사항으로 수정하여 타입 에러를 해결합니다.
 };
 
 export function PostList({ posts, roomId, slug }: PostListProps) {
   if (posts.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-12 text-center">
-        <p className="text-sm text-zinc-500">아직 남겨진 글이 없습니다. 첫 번째 방명록을 남겨보세요!</p>
+        <p className="text-sm text-zinc-500">아직 남겨진 요청이 없습니다. 요청을 남겨보세요!</p>
       </div>
     );
   }

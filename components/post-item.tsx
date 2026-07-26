@@ -85,10 +85,10 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
         </button>
       </div>
 
-      {/* 삭제 비밀번호 입력 폼 */}
+      {/* 삭제 비밀번호 입력 폼 (0000 문구 제거됨) */}
       {showDeleteForm && (
         <form onSubmit={handleDeleteSubmit} className="mt-3 p-3 bg-zinc-50 rounded-xl space-y-2 border border-zinc-200">
-          <div className="text-xs font-medium text-zinc-700">삭제 비밀번호를 입력해주세요 (기본: 0000)</div>
+          <div className="text-xs font-medium text-zinc-700">작성 시 설정한 비밀번호를 입력해주세요</div>
           <div className="flex gap-2">
             <input
               type="password"

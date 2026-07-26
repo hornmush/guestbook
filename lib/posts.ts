@@ -1,23 +1,43 @@
+import { supabase } from "@/lib/supabase";
 import type { Post, PostWithReplies } from "@/lib/types";
 
-export function buildPostTree(posts: Post[]): PostWithReplies[] {
-  const map = new Map<string, PostWithReplies>();
+export async function getPosts(roomId: string) {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("room_id", roomId)
+    .order("created_at", { ascending: true });
 
-  for (const post of posts) {
-    map.set(post.id, { ...post, replies: [] });
+  if (error) {
+    console.error("Error fetching posts:", error);
+    return [];
   }
 
+  const posts = data as Post[];
+  const map = new Map<string, PostWithReplies>();
   const roots: PostWithReplies[] = [];
 
-  for (const post of posts) {
-    const node = map.get(post.id)!;
+  posts.forEach((post) => {
+    const node: PostWithReplies = { ...post, replies: [] };
+    map.set(post.id, node);
+  });
+
+  posts.forEach((post) => {
+    const node = map.get(post.id);
+    if (!node) return;
 
     if (post.parent_id) {
-      map.get(post.parent_id)?.replies.push(node);
+      const parent = map.get(post.parent_id);
+      if (parent) {
+        if (!parent.replies) {
+          parent.replies = [];
+        }
+        parent.replies.push(node);
+      }
     } else {
       roots.push(node);
     }
-  }
+  });
 
   return roots;
 }

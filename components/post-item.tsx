@@ -13,18 +13,19 @@ type PostItemProps = {
 
 export function PostItem({ post, roomId, slug }: PostItemProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null); // 게시글 또는 답글 ID
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!deleteTargetId) return;
     setError("");
     setLoading(true);
 
     const formData = new FormData();
-    formData.append("postId", post.id);
+    formData.append("postId", deleteTargetId);
     formData.append("password", password);
     if (slug) formData.append("slug", slug);
 
@@ -34,13 +35,14 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
     if (res?.error) {
       setError(res.error);
     } else {
-      setShowDeleteModal(false);
+      setDeleteTargetId(null);
+      setPassword("");
     }
   };
 
   return (
     <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm space-y-4">
-      {/* 메인 게시글 헤더 (요청자, 상품명, 바코드, 삭제 버튼) */}
+      {/* 메인 게시글 헤더 */}
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -67,33 +69,41 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
         </div>
 
         <button
-          onClick={() => setShowDeleteModal(true)}
+          onClick={() => setDeleteTargetId(post.id)}
           className="text-xs text-zinc-400 hover:text-red-600 px-2 py-1 rounded transition-colors"
         >
           삭제
         </button>
       </div>
 
-      {/* 상세 요청사항 내용 */}
+      {/* 상세 요청사항 */}
       <div className="text-zinc-800 text-sm whitespace-pre-wrap bg-zinc-50 p-4 rounded-xl border border-zinc-100">
         {post.content}
       </div>
 
-      {/* 답글 목록 표시 */}
+      {/* 답글 목록 (각 답글마다 삭제 버튼 추가) */}
       {post.replies && post.replies.length > 0 && (
         <div className="space-y-3 pl-4 border-l-2 border-indigo-100 mt-4 pt-2">
           {post.replies.map((reply) => (
             <div key={reply.id} className="bg-zinc-50/80 rounded-xl p-3 border border-zinc-200/60 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-indigo-900">{reply.nickname}</span>
-                <span className="text-[10px] text-zinc-400">
-                  {new Date(reply.created_at).toLocaleString("ko-KR", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-400">
+                    {new Date(reply.created_at).toLocaleString("ko-KR", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <button
+                    onClick={() => setDeleteTargetId(reply.id)}
+                    className="text-[10px] text-zinc-400 hover:text-red-600 transition-colors"
+                  >
+                    삭제
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-zinc-700 whitespace-pre-wrap">{reply.content}</p>
             </div>
@@ -101,7 +111,7 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
         </div>
       )}
 
-      {/* 답글 달기 버튼 및 폼 영역 */}
+      {/* 답글 달기 버튼 및 폼 */}
       <div className="pt-2 flex flex-col items-end">
         {!showReplyForm ? (
           <button
@@ -122,11 +132,13 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
         )}
       </div>
 
-      {/* 삭제 비밀번호 입력 모달 */}
-      {showDeleteModal && (
+      {/* 삭제 비밀번호 입력 모달 (게시글/답글 공용) */}
+      {deleteTargetId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
-            <h3 className="text-base font-bold text-zinc-900">게시글 삭제</h3>
+            <h3 className="text-base font-bold text-zinc-900">
+              {deleteTargetId === post.id ? "게시글 삭제" : "댓글 삭제"}
+            </h3>
             <p className="text-xs text-zinc-500">글 작성 시 설정했던 비밀번호를 입력해주세요.</p>
             <form onSubmit={handleDelete} className="space-y-3">
               <input
@@ -143,7 +155,7 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowDeleteModal(false);
+                    setDeleteTargetId(null);
                     setPassword("");
                     setError("");
                   }}

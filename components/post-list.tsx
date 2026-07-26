@@ -38,7 +38,7 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
     };
   }, [newAlert]);
 
-  // Supabase 실시간 감지 (새로고침 없이 화면에 즉시 렌더링)
+  // Supabase 실시간 감지 (새 글 등록 및 삭제 즉시 반영)
   useEffect(() => {
     const channel = supabase
       .channel(`room-realtime-${roomId}`)
@@ -54,12 +54,9 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
           const newPost = payload.new as PostWithReplies;
 
           setPosts((prevPosts) => {
-            // 부모 글인 경우 맨 위에 즉시 추가
             if (!newPost.parent_id) {
               return [{ ...newPost, replies: [] }, ...prevPosts];
-            } 
-            // 답글인 경우 해당 부모 글 아래에 즉시 추가
-            else {
+            } else {
               return prevPosts.map((post) => {
                 if (post.id === newPost.parent_id) {
                   return {
@@ -73,6 +70,26 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
           });
 
           setNewAlert(true); // 알림 배너 및 탭 깜빡임 시작
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "posts",
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          const deletedId = payload.old.id;
+
+          setPosts((prevPosts) => {
+            const filtered = prevPosts.filter((p) => p.id !== deletedId);
+            return filtered.map((post) => ({
+              ...post,
+              replies: (post.replies || []).filter((r) => r.id !== deletedId),
+            }));
+          });
         }
       )
       .subscribe();

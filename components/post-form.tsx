@@ -5,7 +5,7 @@ import { createPost } from "@/app/actions";
 
 type PostFormProps = {
   roomId: string;
-  slug: string;
+  slug?: string; // 👈 선택 사항(? 추가)으로 수정되어 빌드 오류가 해결됩니다.
   parentId?: string;
   onCancel?: () => void;
   compact?: boolean;
@@ -48,7 +48,7 @@ export function PostForm({
       className={`rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm ${compact ? "mt-3" : ""}`}
     >
       <input type="hidden" name="roomId" value={roomId} />
-      <input type="hidden" name="slug" value={slug} />
+      {slug ? <input type="hidden" name="slug" value={slug} /> : null}
       {parentId ? <input type="hidden" name="parentId" value={parentId} /> : null}
 
       <div className="grid gap-4">
@@ -92,7 +92,7 @@ export function PostForm({
             name="content"
             required
             rows={compact ? 3 : 4}
-            placeholder={compact ? "답글을 입력하세요" : "방명록을 남겨보세요"}
+            placeholder={compact ? "답글을 입력하세요" : "요청사항을 남겨주세요"}
             className="w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
           />
         </div>

@@ -37,7 +37,7 @@ export async function createPost(formData: FormData) {
     product_name: productName,
     barcode: barcode || null,
     content,
-    password: "0000",
+    password: "0000", // 기본 비밀번호 자동 저장
   });
 
   if (error) {
@@ -54,10 +54,26 @@ export async function createPost(formData: FormData) {
 
 export async function deletePost(formData: FormData) {
   const id = formData.get("postId") as string;
+  const password = formData.get("password") as string;
   const slug = formData.get("slug") as string;
 
-  if (!id) {
-    return { error: "필수 정보가 누락되었습니다." };
+  if (!id || !password) {
+    return { error: "비밀번호를 입력해 주세요." };
+  }
+
+  // 데이터베이스에서 해당 글의 비밀번호 확인
+  const { data: post, error: fetchError } = await supabase
+    .from("posts")
+    .select("password")
+    .eq("id", id)
+    .single();
+
+  if (fetchError || !post) {
+    return { error: "게시글을 찾을 수 없습니다." };
+  }
+
+  if (post.password !== password) {
+    return { error: "비밀번호가 일치하지 않습니다." };
   }
 
   const { error: deleteError } = await supabase

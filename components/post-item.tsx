@@ -13,16 +13,23 @@ type PostItemProps = {
 
 export function PostItem({ post, roomId, slug }: PostItemProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
+  const [showDeleteForm, setShowDeleteForm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
 
-  const handleDelete = async () => {
+  const handleDeleteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     const formData = new FormData();
     formData.append("postId", post.id);
+    formData.append("password", deletePassword);
     if (slug) formData.append("slug", slug);
 
     const res = await deletePost(formData);
     if (res?.error) {
       setDeleteError(res.error);
+    } else {
+      setDeletePassword("");
+      setShowDeleteForm(false);
     }
   };
 
@@ -68,14 +75,39 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
           답글
         </button>
         <button
-          onClick={handleDelete}
+          onClick={() => {
+            setShowDeleteForm(!showDeleteForm);
+            setDeleteError("");
+          }}
           className="text-zinc-400 hover:text-red-600"
         >
           삭제
         </button>
       </div>
 
-      {deleteError && <p className="text-xs text-red-600 mt-2">{deleteError}</p>}
+      {/* 삭제 비밀번호 입력 폼 */}
+      {showDeleteForm && (
+        <form onSubmit={handleDeleteSubmit} className="mt-3 p-3 bg-zinc-50 rounded-xl space-y-2 border border-zinc-200">
+          <div className="text-xs font-medium text-zinc-700">삭제 비밀번호를 입력해주세요 (기본: 0000)</div>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              placeholder="비밀번호"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              required
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 shrink-0"
+            >
+              삭제하기
+            </button>
+          </div>
+          {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
+        </form>
+      )}
 
       {showReplyForm && (
         <div className="mt-3 pt-3 border-t border-zinc-100">

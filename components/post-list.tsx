@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { deletePost } from "@/app/actions";
+import { useState, useTransition, useEffect } from "react";
+import { deletePost, toggleComplete } from "@/app/actions";
 import { PostForm } from "@/components/post-form";
 import type { PostWithReplies } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 type PostListProps = {
   posts: PostWithReplies[];
@@ -11,12 +13,42 @@ type PostListProps = {
   slug?: string;
 };
 
-export function PostList({ posts, roomId, slug }: PostListProps) {
+export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
+  const router = useRouter();
+  const [posts, setPosts] = useState<PostWithReplies[]>(initialPosts);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  // 부모 컴포넌트에서 넘어온 posts가 바뀔 때 상태 동기화
+  useEffect(() => {
+    setPosts(initialPosts);
+  }, [initialPosts]);
+
+  // 🌟 실시간 데이터 자동 반영 (Realtime)
+  useEffect(() => {
+    const channel = supabase
+      .channel(`room-posts-${roomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "posts",
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, router]);
 
   const handleDelete = (postId: string) => {
     setError("");
@@ -37,7 +69,20 @@ export function PostList({ posts, roomId, slug }: PostListProps) {
       } else {
         setDeletePasswordModalId(null);
         setPasswordInput("");
+        router.refresh();
       }
+    });
+  };
+
+  const handleToggleComplete = (postId: string, currentCompleted: boolean) => {
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append("postId", postId);
+      formData.append("completed", String(!currentCompleted));
+      if (slug) formData.append("slug", slug);
+
+      await toggleComplete(formData);
+      router.refresh();
     });
   };
 
@@ -52,12 +97,24 @@ export function PostList({ posts, roomId, slug }: PostListProps) {
   return (
     <div className="space-y-4">
       {posts.map((post) => (
-        <div key={post.id} className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-3">
+        <div
+          key={post.id}
+          className={`p-5 rounded-2xl border shadow-sm space-y-3 transition ${
+            post.completed ? "bg-zinc-50 border-zinc-300 opacity-80" : "bg-white border-zinc-200"
+          }`}
+        >
           {/* 게시글 상단 정보 */}
           <div className="flex justify-between items-start">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-zinc-900 text-sm">{post.nickname}</span>
+                <span className={`font-bold text-sm ${post.completed ? "text-zinc-500 line-through" : "text-zinc-900"}`}>
+                  {post.nickname}
+                </span>
+                {post.completed && (
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                    처리완료
+                  </span>
+                )}
                 <span className="text-xs text-zinc-400">
                   {new Date(post.created_at).toLocaleString("ko-KR", {
                     month: "short",
@@ -77,20 +134,38 @@ export function PostList({ posts, roomId, slug }: PostListProps) {
               )}
             </div>
 
-            <button
-              onClick={() => {
-                setDeletePasswordModalId(post.id);
-                setPasswordInput("");
-                setError("");
-              }}
-              className="text-xs text-zinc-400 hover:text-red-600 transition"
-            >
-              삭제
-            </button>
+            <div className="flex items-center gap-2">
+              {/* 처리완료 버튼 */}
+              <button
+                onClick={() => handleToggleComplete(post.id, post.completed)}
+                className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition ${
+                  post.completed
+                    ? "bg-zinc-200 text-zinc-700 hover:bg-zinc-300"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                }`}
+              >
+                {post.completed ? "완료취소" : "처리완료"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setDeletePasswordModalId(post.id);
+                  setPasswordInput("");
+                  setError("");
+                }}
+                className="text-xs text-zinc-400 hover:text-red-600 transition px-1"
+              >
+                삭제
+              </button>
+            </div>
           </div>
 
           {/* 내용 */}
-          <p className="text-zinc-700 text-sm whitespace-pre-wrap leading-relaxed bg-zinc-50 p-3 rounded-xl">
+          <p
+            className={`text-sm whitespace-pre-wrap leading-relaxed p-3 rounded-xl ${
+              post.completed ? "bg-zinc-100 text-zinc-500 line-through" : "bg-zinc-50 text-zinc-700"
+            }`}
+          >
             {post.content}
           </p>
 
@@ -155,7 +230,10 @@ export function PostList({ posts, roomId, slug }: PostListProps) {
                   roomId={roomId}
                   slug={slug}
                   parentId={post.id}
-                  onCancel={() => setReplyingToId(null)}
+                  onCancel={() => {
+                    setReplyingToId(null);
+                    router.refresh();
+                  }}
                 />
               </div>
             ) : (

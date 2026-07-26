@@ -26,7 +26,12 @@ export function PostList({ posts, roomId, slug }: PostListProps) {
     }
 
     startTransition(async () => {
-      const res = await deletePost(postId, passwordInput, slug);
+      const formData = new FormData();
+      formData.append("postId", postId);
+      formData.append("password", passwordInput);
+      if (slug) formData.append("slug", slug);
+
+      const res = await deletePost(formData);
       if (res && res.error) {
         setError(res.error);
       } else {
@@ -120,7 +125,7 @@ export function PostList({ posts, roomId, slug }: PostListProps) {
             </div>
           )}
 
-          {/* 🌟 대댓글 영역 */}
+          {/* 대댓글 영역 */}
           <div className="mt-4 pt-3 border-t border-zinc-100 space-y-3 pl-4 border-l-2 border-indigo-100">
             {post.replies && post.replies.length > 0 && (
               <div className="space-y-2">

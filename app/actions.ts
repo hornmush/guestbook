@@ -2,27 +2,20 @@
 
 import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
+import { nanoid } from "nanoid";
+import { redirect } from "next/navigation";
 
-// 새로운 POP 방(요청함) 생성
-export async function createRoom(formData: FormData) {
-  const name = formData.get("name") as string;
-  const slug = formData.get("slug") as string;
+// 새로운 방 생성 (자동 생성 방식)
+export async function createRoom() {
+  const slug = nanoid(8);
 
-  if (!name || !slug) {
-    return { error: "이름과 주소를 모두 입력해주세요." };
-  }
-
-  const { error } = await supabase.from("rooms").insert([{ name, slug }]);
+  const { error } = await supabase.from("rooms").insert({ slug });
 
   if (error) {
-    if (error.code === "23505") {
-      return { error: "이미 사용 중인 방 주소(URL)입니다. 다른 주소를 입력해주세요." };
-    }
-    return { error: "방 생성 중 오류가 발생했습니다." };
+    throw new Error("방 생성에 실패했습니다.");
   }
 
-  revalidatePath("/");
-  return { success: true };
+  redirect(`/room/${slug}`);
 }
 
 // 게시글 작성

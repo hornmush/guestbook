@@ -28,7 +28,7 @@ export async function createPost(formData: FormData) {
   const content = formData.get("content") as string;
   const slug = formData.get("slug") as string;
 
-  await supabase.from("posts").insert([
+  const { error } = await supabase.from("posts").insert([
     {
       room_id,
       parent_id: parent_id || null,
@@ -40,11 +40,16 @@ export async function createPost(formData: FormData) {
     },
   ]);
 
+  if (error) {
+    return { error: "게시글 작성 중 오류가 발생했습니다." };
+  }
+
   if (slug) {
     revalidatePath(`/${slug}`);
   } else {
     revalidatePath("/");
   }
+  return { success: true };
 }
 
 // 완료 상태 변경

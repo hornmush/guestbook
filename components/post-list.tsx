@@ -19,6 +19,15 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
     setPosts(initialPosts);
   }, [initialPosts]);
 
+  // 최초 접속 시 브라우저 시스템 알림 권한 요청
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+  }, []);
+
   // 브라우저 탭 깜빡임 효과
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -38,7 +47,7 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
     };
   }, [newAlert]);
 
-  // Supabase 실시간 감지 (새 글 등록 및 삭제 즉시 반영)
+  // Supabase 실시간 감지 (새 글, 답글, 완료 상태, 삭제 실시간 반영 + 윈도우 푸시 알림)
   useEffect(() => {
     const channel = supabase
       .channel(`room-realtime-${roomId}`)
@@ -55,8 +64,18 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
 
           setPosts((prevPosts) => {
             if (!newPost.parent_id) {
+              // 새 게시글인 경우에만 알림 울림 및 윈도우 시스템 알림 발동
+              setNewAlert(true);
+
+              if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+                new Notification("🚨 새로운 POP 요청 등록!", {
+                  body: `${newPost.nickname}님이 새로운 상품 요청을 등록했습니다.`,
+                });
+              }
+
               return [{ ...newPost, replies: [] }, ...prevPosts];
             } else {
+              // 답글인 경우 알림 없이 해당 부모글 하단에 추가
               return prevPosts.map((post) => {
                 if (post.id === newPost.parent_id) {
                   return {
@@ -68,8 +87,26 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
               });
             }
           });
-
-          setNewAlert(true); // 알림 배너 및 탭 깜빡임 시작
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "posts",
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          const updatedPost = payload.new as PostWithReplies;
+          setPosts((prevPosts) =>
+            prevPosts.map((p) => {
+              if (p.id === updatedPost.id) {
+                return { ...p, completed: updatedPost.completed };
+              }
+              return p;
+            })
+          );
         }
       )
       .on(

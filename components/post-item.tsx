@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { PostWithReplies } from "@/lib/types";
 import { PostForm } from "./post-form";
-import { deletePost } from "@/app/actions";
+import { deletePost, toggleComplete } from "@/app/actions";
 
 type PostItemProps = {
   post: PostWithReplies;
@@ -13,10 +13,20 @@ type PostItemProps = {
 
 export function PostItem({ post, roomId, slug }: PostItemProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null); // 게시글 또는 답글 ID
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // 완료 상태 토글 핸들러
+  const handleToggleComplete = async () => {
+    const formData = new FormData();
+    formData.append("postId", post.id);
+    formData.append("completed", (!post.completed).toString());
+    if (slug) formData.append("slug", slug);
+
+    await toggleComplete(formData);
+  };
 
   const handleDelete = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,12 +51,23 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm space-y-4">
+    <div
+      className={`rounded-2xl border p-5 shadow-sm space-y-4 transition-colors ${
+        post.completed
+          ? "bg-emerald-50/50 border-emerald-300"
+          : "bg-white border-zinc-200"
+      }`}
+    >
       {/* 메인 게시글 헤더 */}
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-zinc-900 text-base">{post.nickname}</span>
+            {post.completed && (
+              <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                ✔ 작업 완료
+              </span>
+            )}
             <span className="text-xs text-zinc-400">
               {new Date(post.created_at).toLocaleString("ko-KR", {
                 month: "short",
@@ -68,20 +89,40 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
           </div>
         </div>
 
-        <button
-          onClick={() => setDeleteTargetId(post.id)}
-          className="text-xs text-zinc-400 hover:text-red-600 px-2 py-1 rounded transition-colors"
-        >
-          삭제
-        </button>
+        <div className="flex items-center gap-2">
+          {/* 관리자 완료 체크 버튼 */}
+          <button
+            onClick={handleToggleComplete}
+            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              post.completed
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+            }`}
+          >
+            {post.completed ? "완료 취소" : "완료 체크"}
+          </button>
+
+          <button
+            onClick={() => setDeleteTargetId(post.id)}
+            className="text-xs text-zinc-400 hover:text-red-600 px-2 py-1 rounded transition-colors"
+          >
+            삭제
+          </button>
+        </div>
       </div>
 
       {/* 상세 요청사항 */}
-      <div className="text-zinc-800 text-sm whitespace-pre-wrap bg-zinc-50 p-4 rounded-xl border border-zinc-100">
+      <div
+        className={`text-sm whitespace-pre-wrap p-4 rounded-xl border ${
+          post.completed
+            ? "bg-emerald-50/80 border-emerald-200 text-zinc-700 line-through decoration-zinc-400"
+            : "bg-zinc-50 border-zinc-100 text-zinc-800"
+        }`}
+      >
         {post.content}
       </div>
 
-      {/* 답글 목록 (각 답글마다 삭제 버튼 추가) */}
+      {/* 답글 목록 */}
       {post.replies && post.replies.length > 0 && (
         <div className="space-y-3 pl-4 border-l-2 border-indigo-100 mt-4 pt-2">
           {post.replies.map((reply) => (
@@ -132,7 +173,7 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
         )}
       </div>
 
-      {/* 삭제 비밀번호 입력 모달 (게시글/답글 공용) */}
+      {/* 삭제 비밀번호 입력 모달 */}
       {deleteTargetId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">

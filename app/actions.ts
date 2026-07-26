@@ -39,11 +39,33 @@ export async function createPost(formData: FormData) {
     barcode: barcode || null,
     content,
     password: parentId ? "0000" : password,
+    completed: false,
   });
 
   if (error) {
     console.error("Supabase Insert Error:", error);
     return { error: "글 저장에 실패했습니다." };
+  }
+
+  if (slug) {
+    revalidatePath(`/room/${slug}`);
+  }
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function toggleComplete(formData: FormData) {
+  const id = formData.get("postId") as string;
+  const completed = formData.get("completed") === "true";
+  const slug = formData.get("slug") as string;
+
+  const { error } = await supabase
+    .from("posts")
+    .update({ completed })
+    .eq("id", id);
+
+  if (error) {
+    return { error: "상태 변경에 실패했습니다." };
   }
 
   if (slug) {

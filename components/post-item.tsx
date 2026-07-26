@@ -19,9 +19,14 @@ export function PostItem({ post, roomId, slug }: PostItemProps) {
 
   const handleDelete = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // 🟢 FormData 대신 deletePost가 받는 형식에 맞게 직접 전달합니다.
-    const res = await deletePost(post.id, password, roomId, slug);
+    const formData = new FormData();
+    formData.append("postId", post.id);
+    formData.append("password", password);
+    formData.append("roomId", roomId);
+    if (slug) formData.append("slug", slug);
+
+    // 🟢 FormData 딱 1개만 전달하여 타입 에러 원천 차단
+    const res = await deletePost(formData);
     if (res?.error) {
       setDeleteError(res.error);
     }

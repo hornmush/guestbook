@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { PostWithReplies } from "@/lib/types";
 import { PostItem } from "./post-item";
@@ -15,7 +14,6 @@ type PostListProps = {
 export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
   const [posts, setPosts] = useState<PostWithReplies[]>(initialPosts);
   const [newAlert, setNewAlert] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     setPosts(initialPosts);
@@ -40,7 +38,7 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
     };
   }, [newAlert]);
 
-  // Supabase 실시간 감지
+  // Supabase 실시간 감지 (새로고침 없이 화면에 즉시 렌더링)
   useEffect(() => {
     const channel = supabase
       .channel(`room-realtime-${roomId}`)
@@ -52,9 +50,29 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
           table: "posts",
           filter: `room_id=eq.${roomId}`,
         },
-        () => {
-          setNewAlert(true);
-          router.refresh();
+        (payload) => {
+          const newPost = payload.new as PostWithReplies;
+
+          setPosts((prevPosts) => {
+            // 부모 글인 경우 맨 위에 즉시 추가
+            if (!newPost.parent_id) {
+              return [{ ...newPost, replies: [] }, ...prevPosts];
+            } 
+            // 답글인 경우 해당 부모 글 아래에 즉시 추가
+            else {
+              return prevPosts.map((post) => {
+                if (post.id === newPost.parent_id) {
+                  return {
+                    ...post,
+                    replies: [...(post.replies || []), newPost],
+                  };
+                }
+                return post;
+              });
+            }
+          });
+
+          setNewAlert(true); // 알림 배너 및 탭 깜빡임 시작
         }
       )
       .subscribe();
@@ -62,7 +80,7 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, router]);
+  }, [roomId]);
 
   if (posts.length === 0) {
     return (

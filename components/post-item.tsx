@@ -1,123 +1,106 @@
 "use client";
 
 import { useState } from "react";
+import type { PostWithReplies } from "@/lib/types";
 import { PostForm } from "./post-form";
 import { deletePost } from "@/app/actions";
 
-export interface Post {
-  id: string;
-  nickname: string;
-  content: string;
-  created_at: string;
-  replies?: Post[];
-}
-
-interface PostItemProps {
-  post: Post;
+type PostItemProps = {
+  post: PostWithReplies;
   roomId: string;
-}
+  slug?: string;
+};
 
-export function PostItem({ post, roomId }: PostItemProps) {
+export function PostItem({ post, roomId, slug }: PostItemProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
-  const [showDeleteInput, setShowDeleteInput] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [password, setPassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
-  // 글 삭제 함수
-  const handleDelete = async () => {
-    if (!passwordInput.trim()) {
-      alert("비밀번호를 입력해 주세요.");
-      return;
-    }
+  const handleDelete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("postId", post.id);
+    formData.append("password", password);
+    formData.append("roomId", roomId);
+    if (slug) formData.append("slug", slug);
 
-    setIsDeleting(true);
-    const res = await deletePost(post.id, passwordInput);
-    setIsDeleting(false);
-
-    if (res.success) {
-      alert("게시글이 삭제되었습니다.");
-      setShowDeleteInput(false);
-      setPasswordInput("");
-    } else {
-      alert(res.message || "삭제에 실패했습니다.");
+    const res = await deletePost(formData);
+    if (res?.error) {
+      setDeleteError(res.error);
     }
   };
 
   return (
-    <article className="p-4 rounded-lg border bg-white space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="font-semibold text-gray-800">{post.nickname}</span>
-        <span className="text-xs text-gray-400">
-          {new Date(post.created_at).toLocaleDateString()}
+    <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-semibold text-zinc-900">{post.nickname}</span>
+        <span className="text-xs text-zinc-400">
+          {new Date(post.createdAt).toLocaleDateString()}
         </span>
       </div>
 
-      <p className="text-gray-700 whitespace-pre-wrap">{post.content}</p>
+      <p className="text-sm text-zinc-700 whitespace-pre-wrap mb-3">{post.content}</p>
 
-      {/* 답글 달기 및 삭제 버튼 */}
-      <div className="pt-2 flex items-center justify-between text-xs text-gray-500 border-t">
+      <div className="flex items-center gap-3 text-xs">
         <button
-          onClick={() => {
-            setShowReplyForm(!showReplyForm);
-            setShowDeleteInput(false);
-          }}
-          className="text-blue-500 hover:underline"
+          onClick={() => setShowReplyForm(!showReplyForm)}
+          className="text-indigo-600 font-medium hover:underline"
         >
-          {showReplyForm ? "답글 취소" : "답글 달기"}
+          답글
         </button>
-
         <button
-          onClick={() => {
-            setShowDeleteInput(!showDeleteInput);
-            setShowReplyForm(false);
-          }}
-          className="text-red-400 hover:text-red-600 hover:underline"
+          onClick={() => setShowDelete(!showDelete)}
+          className="text-zinc-400 hover:text-zinc-600"
         >
-          {showDeleteInput ? "삭제 취소" : "삭제"}
+          삭제
         </button>
       </div>
 
-      {/* 삭제 비밀번호 입력란 */}
-      {showDeleteInput && (
-        <div className="pt-2 flex items-center gap-2 bg-gray-50 p-2 rounded">
+      {showDelete && (
+        <form onSubmit={handleDelete} className="mt-3 flex items-center gap-2">
           <input
             type="password"
-            placeholder="글 비밀번호 또는 관리자 비번"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            className="border rounded px-2 py-1 text-xs flex-1 bg-white"
+            name="password"
+            placeholder="비밀번호 4자리"
+            maxLength={4}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-28 rounded border border-zinc-300 px-2 py-1 text-xs"
+            required
           />
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600 disabled:opacity-50"
-          >
-            {isDeleting ? "삭제 중..." : "확인"}
+          <button type="submit" className="rounded bg-red-600 px-3 py-1 text-xs text-white">
+            삭제 확인
           </button>
-        </div>
+          {deleteError && <span className="text-xs text-red-600">{deleteError}</span>}
+        </form>
       )}
 
-      {/* 답글 작성 폼 */}
       {showReplyForm && (
-        <div className="pt-2 border-t mt-2">
-          <PostForm
-            roomId={roomId}
-            parentId={post.id}
-            onSuccess={() => setShowReplyForm(false)}
-          />
-        </div>
+        <PostForm
+          roomId={roomId}
+          slug={slug}
+          parentId={post.id}
+          onCancel={() => setShowReplyForm(false)}
+          compact={true}
+        />
       )}
 
-      {/* 답글 목록 */}
-      {post.replies && post.replies.length > 0 ? (
-        <div className="mt-4 pl-4 border-l-2 border-gray-100 space-y-3">
+      {post.replies && post.replies.length > 0 && (
+        <div className="mt-4 pl-4 border-l-2 border-zinc-100 space-y-3">
           {post.replies.map((reply) => (
-            <PostItem key={reply.id} post={reply} roomId={roomId} />
+            <div key={reply.id} className="text-sm">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-medium text-zinc-800">{reply.nickname}</span>
+                <span className="text-xs text-zinc-400">
+                  {new Date(reply.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <p className="text-zinc-600">{reply.content}</p>
+            </div>
           ))}
         </div>
-      ) : null}
-    </article>
+      )}
+    </div>
   );
 }
-
-export default PostItem;

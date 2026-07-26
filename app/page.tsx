@@ -21,21 +21,21 @@ export default async function HomePage() {
   return (
     <main className="max-w-2xl mx-auto p-4 sm:p-6 space-y-8">
       <header className="text-center space-y-2 py-4 border-b">
-        <h1 className="text-3xl font-bold tracking-tight">📖 모두의 방명록</h1>
+        <h1 className="text-3xl font-bold tracking-tight">📖 칠곡농협 POP 요청</h1>
         <p className="text-gray-500 text-sm">
-          자유롭게 방명록을 남기고 이웃들과 소통해 보세요!
+          POP 제작 요청을 남겨주세요
         </p>
       </header>
 
       {/* 글 작성 폼 (메인 방 ID: main) */}
       <section className="bg-white p-6 rounded-xl border shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">새 방명록 쓰기</h2>
+        <h2 className="text-lg font-semibold mb-4">POP 요청 쓰기</h2>
         <PostForm roomId="main" />
       </section>
 
       {/* 게시글 목록 */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">전체 방명록 ({posts?.length || 0})</h2>
+        <h2 className="text-lg font-semibold">전체 POP 요청 ({posts?.length || 0})</h2>
         <PostList posts={posts || []} roomId="main" />
       </section>
     </main>

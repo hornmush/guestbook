@@ -2,19 +2,37 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { deletePost, toggleComplete } from "@/app/actions";
-import type { PostWithReplies } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
+type Post = {
+  id: string;
+  room_id: string;
+  company_name?: string;
+  nickname: string;
+  phone?: string;
+  product_name?: string;
+  barcode?: string;
+  weight?: string;
+  regular_price?: string;
+  sale_price?: string;
+  promo_period?: string;
+  size_quantity?: string;
+  origin?: string;
+  content?: string;
+  completed: boolean;
+  created_at: string;
+};
+
 type PostListProps = {
-  posts: PostWithReplies[];
+  posts: Post[];
   roomId: string;
   slug?: string;
 };
 
 export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
   const router = useRouter();
-  const [posts, setPosts] = useState<PostWithReplies[]>(initialPosts);
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
@@ -25,49 +43,30 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
     setPosts(initialPosts);
   }, [initialPosts]);
 
-  // 실시간 이벤트 감지 (INSERT, UPDATE, DELETE 처리 + 번쩍임 효과)
   useEffect(() => {
     const channel = supabase
       .channel(`room-posts-${roomId}`)
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "posts",
-          filter: `room_id=eq.${roomId}`,
-        },
+        { event: "INSERT", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
         (payload) => {
-          const newPost = payload.new as PostWithReplies;
+          const newPost = payload.new as Post;
           setPosts((prev) => [newPost, ...prev]);
-          
           setHighlightedId(newPost.id);
           setTimeout(() => setHighlightedId(null), 3000);
         }
       )
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "posts",
-          filter: `room_id=eq.${roomId}`,
-        },
+        { event: "UPDATE", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
         (payload) => {
-          const updated = payload.new as PostWithReplies;
-          setPosts((prev) =>
-            prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
-          );
+          const updated = payload.new as Post;
+          setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
         }
       )
       .on(
         "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "posts",
-          filter: `room_id=eq.${roomId}`,
-        },
+        { event: "DELETE", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
         (payload) => {
           const deletedId = (payload.old as { id: string }).id;
           setPosts((prev) => prev.filter((p) => p.id !== deletedId));
@@ -118,7 +117,7 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
   if (posts.length === 0) {
     return (
       <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200 text-zinc-400 text-sm">
-        아직 등록된 요청이 없습니다. 첫 요청을 남겨보세요!
+        아직 등록된 POP 요청이 없습니다. 첫 요청을 남겨보세요!
       </div>
     );
   }
@@ -139,12 +138,15 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
                 : "bg-white border-zinc-200"
             }`}
           >
-            {/* 게시글 상단 정보 */}
-            <div className="flex justify-between items-start">
+            {/* 상단: 업체명, 신청자, 연락처, 완료/삭제 버튼 */}
+            <div className="flex justify-between items-start border-b pb-3">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full font-extrabold">
+                    {post.company_name || "업체명 미입력"}
+                  </span>
                   <span className={`font-bold text-sm ${post.completed ? "text-zinc-500 line-through" : "text-zinc-900"}`}>
-                    {post.nickname}
+                    신청자: {post.nickname} {post.phone && `(${post.phone})`}
                   </span>
                   {isHighlighted && (
                     <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-extrabold animate-bounce">
@@ -156,27 +158,18 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
                       처리완료
                     </span>
                   )}
-                  <span className="text-xs text-zinc-400">
-                    {new Date(post.created_at).toLocaleString("ko-KR", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
                 </div>
-                {post.product_name && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-medium">
-                      {post.product_name}
-                    </span>
-                    {post.barcode && <span className="text-zinc-400">바코드: {post.barcode}</span>}
-                  </div>
-                )}
+                <div className="text-xs text-zinc-400">
+                  신청일시: {new Date(post.created_at).toLocaleString("ko-KR", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
-                {/* 처리완료 버튼 */}
                 <button
                   onClick={() => handleToggleComplete(post.id, post.completed)}
                   className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition ${
@@ -187,7 +180,6 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
                 >
                   {post.completed ? "완료취소" : "처리완료"}
                 </button>
-
                 <button
                   onClick={() => {
                     setDeletePasswordModalId(post.id);
@@ -201,16 +193,49 @@ export function PostList({ posts: initialPosts, roomId, slug }: PostListProps) {
               </div>
             </div>
 
-            {/* 내용 */}
-            <p
-              className={`text-sm whitespace-pre-wrap leading-relaxed p-3 rounded-xl ${
-                post.completed ? "bg-zinc-100 text-zinc-500 line-through" : "bg-zinc-50 text-zinc-700"
-              }`}
-            >
-              {post.content}
-            </p>
+            {/* 중단: 상품 상세 정보 그리드 */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-zinc-50 p-3 rounded-xl text-xs">
+              <div>
+                <span className="text-zinc-400 block">상품명</span>
+                <span className="font-bold text-zinc-800 text-sm">{post.product_name || "-"}</span>
+              </div>
+              <div>
+                <span className="text-zinc-400 block">규격 / 중량</span>
+                <span className="font-semibold text-zinc-700">{post.weight || "-"}</span>
+              </div>
+              <div>
+                <span className="text-zinc-400 block">정상가 / 행사가</span>
+                <span className="font-semibold text-zinc-700">
+                  {post.regular_price || "-"} / <strong className="text-red-600">{post.sale_price || "-"}</strong>
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-400 block">행사기간</span>
+                <span className="font-semibold text-zinc-700">{post.promo_period || "-"}</span>
+              </div>
+              <div>
+                <span className="text-zinc-400 block">사이즈 (종이/방향)</span>
+                <span className="font-semibold text-indigo-600">{post.size_quantity || "-"}</span>
+              </div>
+              <div>
+                <span className="text-zinc-400 block">원산지</span>
+                <span className="font-semibold text-zinc-700">{post.origin || "-"}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-zinc-400 block">바코드</span>
+                <span className="font-mono text-zinc-600">{post.barcode || "-"}</span>
+              </div>
+            </div>
 
-            {/* 삭제 비밀번호 모달/입력창 */}
+            {/* 하단: 비고 (기타요청사항) */}
+            {post.content && (
+              <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-200/60 text-xs space-y-1">
+                <span className="font-bold text-amber-800">비고 및 요청사항:</span>
+                <p className="text-zinc-700 whitespace-pre-wrap">{post.content}</p>
+              </div>
+            )}
+
+            {/* 삭제 비밀번호 모달 */}
             {deletePasswordModalId === post.id && (
               <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
                 <p className="text-xs font-bold text-red-700">관리자 비밀번호를 입력하세요</p>

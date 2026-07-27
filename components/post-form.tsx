@@ -30,7 +30,6 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
     e.preventDefault();
     setError("");
 
-    // 🌟 필수 입력 조건: 신청업체명, 신청자, 연락처만 검사
     if (!companyName.trim() || !nickname.trim() || !phone.trim()) {
       setError("신청업체명, 신청자, 연락처는 필수 입력 항목입니다.");
       return;
@@ -184,13 +183,13 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
         </div>
       </div>
 
-      {/* 4단: 글자사이즈/수량 / 원산지 (선택) */}
+      {/* 4단: 사이즈(종이, 가로 or 세로) / 원산지 (선택) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">글자사이즈 / 수량</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">사이즈 (종이, 가로 or 세로)</label>
           <input
             type="text"
-            placeholder="예: A4 / 2장, 대형 / 1장"
+            placeholder="예: A4, 세로형 / 4절, 가로형"
             value={sizeQuantity}
             onChange={(e) => setSizeQuantity(e.target.value)}
             className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"

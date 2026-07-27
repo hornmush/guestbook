@@ -4,18 +4,14 @@ import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 
-// 1. 새로운 방(페이지) 만들기
-export async function createRoom(formData: FormData) {
-  const title = formData.get("title") as string;
+// 1. 새로운 방(페이지) 만들기 (formData가 없어도 안전하게 기본값 처리)
+export async function createRoom(formData?: FormData) {
+  const title = formData ? (formData.get("title") as string) : "농산팀 POP 요청실";
   const slug = nanoid(6); // 6자리 랜덤 슬러그 생성
-
-  if (!title) {
-    return { error: "방 제목을 입력해주세요." };
-  }
 
   const { error } = await supabase.from("rooms").insert([
     {
-      title,
+      title: title || "농산팀 POP 요청실",
       slug,
     },
   ]);

@@ -8,22 +8,21 @@ import { useRouter } from "next/navigation";
 type Post = {
   id: string;
   room_id: string;
-  company_name?: string;
+  company_name?: string | null;
   nickname: string;
-  phone?: string;
-  product_name?: string;
-  barcode?: string;
-  weight?: string;
-  regular_price?: string;
-  sale_price?: string;
-  promo_period?: string;
-  size_quantity?: string;
-  origin?: string;
-  content?: string;
+  phone?: string | null;
+  product_name?: string | null;
+  barcode?: string | null;
+  weight?: string | null;
+  regular_price?: string | null;
+  sale_price?: string | null;
+  promo_period?: string | null;
+  size_quantity?: string | null;
+  origin?: string | null;
+  content?: string | null;
   completed: boolean;
   created_at: string;
 };
-
 type PostListProps = {
   posts: Post[];
   roomId: string;

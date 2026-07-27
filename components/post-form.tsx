@@ -26,11 +26,17 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
+  // 숫자만 입력되도록 필터링하는 헬퍼 함수
+  const handleNumericChange = (setter: (val: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numericValue = e.target.value.replace(/[^0-9]/g, "");
+    setter(numericValue);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // 필수 항목 검증 (업체명, 신청자, 연락처만 필수)
+    // 필수 항목 검증 (업체명, 신청자, 연락처)
     if (!companyName.trim() || !nickname.trim() || !phone.trim()) {
       setError("신청업체명, 신청자, 연락처는 필수 입력 항목입니다.");
       return;
@@ -109,13 +115,14 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
         </div>
         <div>
           <label className="block text-xs font-bold text-zinc-700 mb-1">
-            연락처 <span className="text-red-500">*</span>
+            연락처 <span className="text-red-500">*</span> <span className="text-zinc-400 font-normal">(숫자만)</span>
           </label>
           <input
             type="text"
-            placeholder="010-0000-0000"
+            inputMode="numeric"
+            placeholder="예: 01012345678"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={handleNumericChange(setPhone)}
             className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
             required
           />
@@ -135,12 +142,13 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">바코드 <span className="text-zinc-400 font-normal">(선택)</span></label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">바코드 <span className="text-zinc-400 font-normal">(선택, 숫자만)</span></label>
           <input
             type="text"
+            inputMode="numeric"
             placeholder="바코드 번호"
             value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
+            onChange={handleNumericChange(setBarcode)}
             className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           />
         </div>
@@ -159,22 +167,24 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
       {/* 3단: 정상가 / 행사가 / 행사기간 (선택) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">정상가 <span className="text-zinc-400 font-normal">(선택)</span></label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">정상가 <span className="text-zinc-400 font-normal">(선택, 숫자만)</span></label>
           <input
             type="text"
-            placeholder="예: 15,000원"
+            inputMode="numeric"
+            placeholder="예: 15000"
             value={regularPrice}
-            onChange={(e) => setRegularPrice(e.target.value)}
+            onChange={handleNumericChange(setRegularPrice)}
             className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">행사가 <span className="text-zinc-400 font-normal">(선택)</span></label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">행사가 <span className="text-zinc-400 font-normal">(선택, 숫자만)</span></label>
           <input
             type="text"
-            placeholder="예: 12,900원"
+            inputMode="numeric"
+            placeholder="예: 12900"
             value={salePrice}
-            onChange={(e) => setSalePrice(e.target.value)}
+            onChange={handleNumericChange(setSalePrice)}
             className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           />
         </div>

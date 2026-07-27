@@ -4,10 +4,10 @@ import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 
-// 1. 새로운 방(페이지) 만들기 (formData가 없어도 안전하게 기본값 처리)
+// 1. 새로운 방(페이지) 만들기
 export async function createRoom(formData?: FormData) {
   const title = formData ? (formData.get("title") as string) : "농산팀 POP 요청실";
-  const slug = nanoid(6); // 6자리 랜덤 슬러그 생성
+  const slug = nanoid(6);
 
   const { error } = await supabase.from("rooms").insert([
     {
@@ -25,21 +25,22 @@ export async function createRoom(formData?: FormData) {
   return { success: true, slug };
 }
 
-// 2. 신규 POP 요청 생성 (모든 항목 데이터베이스 저장 검증 완료)
+// 2. 신규 POP 요청 생성 (필수 3개 외 나머지는 빈칸 허용)
 export async function createPost(formData: FormData) {
   const room_id = formData.get("room_id") as string;
-  const company_name = formData.get("company_name") as string;
-  const nickname = formData.get("nickname") as string;
-  const phone = formData.get("phone") as string;
-  const product_name = formData.get("product_name") as string;
-  const barcode = formData.get("barcode") as string;
-  const weight = formData.get("weight") as string;
-  const regular_price = formData.get("regular_price") as string;
-  const sale_price = formData.get("sale_price") as string;
-  const promo_period = formData.get("promo_period") as string;
-  const size_quantity = formData.get("size_quantity") as string;
-  const origin = formData.get("origin") as string;
-  const content = formData.get("content") as string;
+  const company_name = (formData.get("company_name") as string)?.trim();
+  const nickname = (formData.get("nickname") as string)?.trim();
+  const phone = (formData.get("phone") as string)?.trim();
+  
+  const product_name = (formData.get("product_name") as string)?.trim() || null;
+  const barcode = (formData.get("barcode") as string)?.trim() || null;
+  const weight = (formData.get("weight") as string)?.trim() || null;
+  const regular_price = (formData.get("regular_price") as string)?.trim() || null;
+  const sale_price = (formData.get("sale_price") as string)?.trim() || null;
+  const promo_period = (formData.get("promo_period") as string)?.trim() || null;
+  const size_quantity = (formData.get("size_quantity") as string)?.trim() || null;
+  const origin = (formData.get("origin") as string)?.trim() || null;
+  const content = (formData.get("content") as string)?.trim() || null;
   const slug = formData.get("slug") as string;
 
   // 필수 기재 항목 검증 (업체명, 신청자, 연락처)
@@ -53,15 +54,15 @@ export async function createPost(formData: FormData) {
       company_name,
       nickname,
       phone,
-      product_name: product_name || null,
-      barcode: barcode || null,
-      weight: weight || null,
-      regular_price: regular_price || null,
-      sale_price: sale_price || null,
-      promo_period: promo_period || null,
-      size_quantity: size_quantity || null,
-      origin: origin || null,
-      content: content || null,
+      product_name,
+      barcode,
+      weight,
+      regular_price,
+      sale_price,
+      promo_period,
+      size_quantity,
+      origin,
+      content,
       completed: false,
     },
   ]);

@@ -30,6 +30,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
     e.preventDefault();
     setError("");
 
+    // 필수 항목 검증 (업체명, 신청자, 연락처만 필수)
     if (!companyName.trim() || !nickname.trim() || !phone.trim()) {
       setError("신청업체명, 신청자, 연락처는 필수 입력 항목입니다.");
       return;
@@ -81,7 +82,9 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
       {/* 1단: 업체명 / 신청자 / 연락처 (필수) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">신청업체명 *</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">
+            신청업체명 <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
             placeholder="예: (주)농산물유통"
@@ -92,7 +95,9 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">신청자 *</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">
+            신청자 <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
             placeholder="예: 홍길동"
@@ -103,7 +108,9 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">연락처 *</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">
+            연락처 <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
             placeholder="010-0000-0000"
@@ -118,7 +125,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
       {/* 2단: 상품명 / 바코드 / 중량 (선택) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">상품명</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">상품명 <span className="text-zinc-400 font-normal">(선택)</span></label>
           <input
             type="text"
             placeholder="예: 성주 꿀참외"
@@ -128,7 +135,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">바코드</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">바코드 <span className="text-zinc-400 font-normal">(선택)</span></label>
           <input
             type="text"
             placeholder="바코드 번호"
@@ -138,7 +145,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">중량 / 규격</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">중량 / 규격 <span className="text-zinc-400 font-normal">(선택)</span></label>
           <input
             type="text"
             placeholder="예: 5kg / 1.5kg"
@@ -152,7 +159,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
       {/* 3단: 정상가 / 행사가 / 행사기간 (선택) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">정상가</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">정상가 <span className="text-zinc-400 font-normal">(선택)</span></label>
           <input
             type="text"
             placeholder="예: 15,000원"
@@ -162,7 +169,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">행사가</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">행사가 <span className="text-zinc-400 font-normal">(선택)</span></label>
           <input
             type="text"
             placeholder="예: 12,900원"
@@ -172,7 +179,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">행사기간</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">행사기간 <span className="text-zinc-400 font-normal">(선택)</span></label>
           <input
             type="text"
             placeholder="예: 3/1 ~ 3/7"
@@ -186,7 +193,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
       {/* 4단: 사이즈(종이, 가로 or 세로) / 원산지 (선택) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">사이즈 (종이, 가로 or 세로)</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">사이즈 (종이, 가로 or 세로) <span className="text-zinc-400 font-normal">(선택)</span></label>
           <input
             type="text"
             placeholder="예: A4, 세로형 / 4절, 가로형"
@@ -196,7 +203,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">원산지</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">원산지 <span className="text-zinc-400 font-normal">(선택)</span></label>
           <input
             type="text"
             placeholder="예: 경북 성주군"
@@ -207,9 +214,11 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
         </div>
       </div>
 
-      {/* 5단: 비고 (기타요청사항) */}
+      {/* 5단: 비고 (기타요청사항) - 선택 항목 명시 */}
       <div>
-        <label className="block text-xs font-bold text-zinc-700 mb-1">비고 (기타요청사항)</label>
+        <label className="block text-xs font-bold text-zinc-700 mb-1">
+          비고 (기타요청사항) <span className="text-zinc-400 font-normal">(선택)</span>
+        </label>
         <textarea
           placeholder="POP에 특별히 들어가야 할 문구나 요청사항을 적어주세요."
           value={content}

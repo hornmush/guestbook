@@ -2,8 +2,34 @@
 
 import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
+import { nanoid } from "nanoid";
 
-// 1. 신규 POP 요청 생성 (모든 항목 데이터베이스 저장 검증 완료)
+// 1. 새로운 방(페이지) 만들기
+export async function createRoom(formData: FormData) {
+  const title = formData.get("title") as string;
+  const slug = nanoid(6); // 6자리 랜덤 슬러그 생성
+
+  if (!title) {
+    return { error: "방 제목을 입력해주세요." };
+  }
+
+  const { error } = await supabase.from("rooms").insert([
+    {
+      title,
+      slug,
+    },
+  ]);
+
+  if (error) {
+    console.error("Room creation error:", error.message);
+    return { error: "방 생성 중 오류가 발생했습니다." };
+  }
+
+  revalidatePath("/");
+  return { success: true, slug };
+}
+
+// 2. 신규 POP 요청 생성 (모든 항목 데이터베이스 저장 검증 완료)
 export async function createPost(formData: FormData) {
   const room_id = formData.get("room_id") as string;
   const company_name = formData.get("company_name") as string;
@@ -56,7 +82,7 @@ export async function createPost(formData: FormData) {
   return { success: true };
 }
 
-// 2. 게시글 삭제 (관리자 비밀번호 검증)
+// 3. 게시글 삭제 (관리자 비밀번호 검증)
 export async function deletePost(formData: FormData) {
   const postId = formData.get("postId") as string;
   const password = formData.get("password") as string;
@@ -79,7 +105,7 @@ export async function deletePost(formData: FormData) {
   return { success: true };
 }
 
-// 3. 처리완료 상태 토글
+// 4. 처리완료 상태 토글
 export async function toggleComplete(formData: FormData) {
   const postId = formData.get("postId") as string;
   const completedStr = formData.get("completed") as string;

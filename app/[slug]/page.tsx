@@ -1,11 +1,10 @@
-import { PostList } from "@/components/post-list";
-import { PostForm } from "@/components/post-form";
 import { supabase } from "@/lib/supabase";
+import { ClientRoomContent } from "@/components/client-room-content"; // 아래에 만들거나 하나의 컴포넌트로 처리
 
 export default async function Page({ params }: { params: { slug: string } }) {
   const { slug } = params;
 
-  // 1. slug로 현재 방(room)의 정보를 가져옵니다.
+  // 1. slug로 방(room) 정보 가져오기
   const { data: room } = await supabase
     .from("rooms")
     .select("id")
@@ -14,7 +13,7 @@ export default async function Page({ params }: { params: { slug: string } }) {
 
   const roomId = room?.id || "";
 
-  // 2. 해당 방의 post 목록을 가져옵니다.
+  // 2. 해당 방의 전체 posts 가져오기
   const { data: posts } = await supabase
     .from("posts")
     .select("*")
@@ -23,18 +22,20 @@ export default async function Page({ params }: { params: { slug: string } }) {
 
   return (
     <main className="min-h-screen bg-zinc-50 py-8 px-4">
-      {/* 
-        [핵심] 
-        바깥쪽에 따로 나와 있던 <PostForm />은 지우고, 
-        아래처럼 PostList 안의 writeFormNode 속성으로 넣어주어야 
-        '1. 요청 작성' 탭을 눌렀을 때만 폼이 쏙 들어와서 표시됩니다!
-      */}
-      <PostList 
-        posts={posts || []} 
-        roomId={roomId} 
-        slug={slug}
-        writeFormNode={<PostForm roomId={roomId} slug={slug} />}
-      />
+      <div className="max-w-4xl mx-auto space-y-6">
+        
+        {/* 1. 메인 타이틀 */}
+        <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+          <div>
+            <h1 className="text-xl font-extrabold text-zinc-900">칠곡농협 POP 요청</h1>
+            <p className="text-xs text-zinc-500 mt-0.5">POP 제작 요청을 남기고 처리 상태를 관리하세요.</p>
+          </div>
+        </div>
+
+        {/* 2. 탭과 본문이 통합된 클라이언트 컴포넌트 호출 */}
+        <ClientRoomContent initialPosts={posts || []} roomId={roomId} slug={slug} />
+
+      </div>
     </main>
   );
 }

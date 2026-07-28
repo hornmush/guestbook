@@ -1,0 +1,358 @@
+"use client";
+
+import { useState, useTransition, useEffect } from "react";
+import { deletePost, toggleComplete } from "@/app/actions";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { PostForm } from "@/components/post-form";
+
+type Post = {
+  id: string;
+  room_id: string;
+  company_name?: string | null;
+  nickname: string;
+  phone?: string | null;
+  product_name?: string | null;
+  barcode?: string | null;
+  weight?: string | null;
+  regular_price?: string | null;
+  sale_price?: string | null;
+  promo_period?: string | null;
+  size_quantity?: string | null;
+  origin?: string | null;
+  content?: string | null;
+  completed: boolean;
+  created_at: string;
+};
+
+export function ClientRoomContent({ initialPosts, roomId, slug }: { initialPosts: Post[]; roomId: string; slug: string }) {
+  const router = useRouter();
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [activeTab, setActiveTab] = useState<"write" | "list" | "completed">("write");
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setPosts(initialPosts);
+  }, [initialPosts]);
+
+  // 실시간 구독 (Supabase Realtime)
+  useEffect(() => {
+    const channel = supabase
+      .channel(`room-posts-${roomId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
+        (payload) => {
+          const newPost = payload.new as Post;
+          setPosts((prev) => [newPost, ...prev]);
+          setHighlightedId(newPost.id);
+          setTimeout(() => setHighlightedId(null), 3000);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
+        (payload) => {
+          const updated = payload.new as Post;
+          setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
+        (payload) => {
+          const deletedId = (payload.old as { id: string }).id;
+          setPosts((prev) => prev.filter((p) => p.id !== deletedId));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId]);
+
+  const handleDelete = (postId: string) => {
+    setError("");
+    if (passwordInput !== "0371") {
+      setError("관리자 비밀번호가 틀렸습니다.");
+      return;
+    }
+
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append("postId", postId);
+      formData.append("password", passwordInput);
+      if (slug) formData.append("slug", slug);
+
+      const res = await deletePost(formData);
+      if (res && res.error) {
+        setError(res.error);
+      } else {
+        setDeletePasswordModalId(null);
+        setPasswordInput("");
+        router.refresh();
+      }
+    });
+  };
+
+  const handleToggleComplete = (postId: string, currentCompleted: boolean) => {
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append("postId", postId);
+      formData.append("completed", String(!currentCompleted));
+      if (slug) formData.append("slug", slug);
+
+      await toggleComplete(formData);
+    });
+  };
+
+  const activePosts = posts.filter((p) => !p.completed);
+  const completedPosts = posts.filter((p) => p.completed);
+
+  return (
+    <div className="space-y-6">
+      {/* 타이틀 바로 밑에 위치하는 3항목 탭 네비게이션 */}
+      <div className="bg-white p-2 rounded-2xl border border-zinc-200 shadow-sm">
+        <div className="flex rounded-xl bg-zinc-100 p-1 gap-1">
+          <button
+            onClick={() => setActiveTab("write")}
+            className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition ${
+              activeTab === "write" ? "bg-white text-indigo-600 shadow-sm" : "text-zinc-600 hover:text-zinc-900"
+            }`}
+          >
+            1. 요청 작성
+          </button>
+          <button
+            onClick={() => setActiveTab("list")}
+            className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+              activeTab === "list" ? "bg-white text-indigo-600 shadow-sm" : "text-zinc-600 hover:text-zinc-900"
+            }`}
+          >
+            2. 요청 목록
+            <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full text-[10px]">
+              {activePosts.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("completed")}
+            className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+              activeTab === "completed" ? "bg-white text-emerald-600 shadow-sm" : "text-zinc-600 hover:text-zinc-900"
+            }`}
+          >
+            3. 완료된 목록
+            <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full text-[10px]">
+              {completedPosts.length}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* 탭 1: 요청 작성 폼 */}
+      {activeTab === "write" && (
+        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+          <h3 className="font-bold text-zinc-800 text-base border-b pb-2">신규 POP 제작 요청서 작성</h3>
+          <PostForm roomId={roomId} slug={slug} />
+        </div>
+      )}
+
+      {/* 탭 2: 요청 목록 (진행중) */}
+      {activeTab === "list" && (
+        <div>
+          {activePosts.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200 text-zinc-400 text-sm">
+              진행중인 POP 요청이 없습니다.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {activePosts.map((post) => (
+                <PostCard 
+                  key={post.id} 
+                  post={post} 
+                  highlightedId={highlightedId} 
+                  deletePasswordModalId={deletePasswordModalId}
+                  passwordInput={passwordInput}
+                  setPasswordInput={setPasswordInput}
+                  setDeletePasswordModalId={setDeletePasswordModalId}
+                  error={error}
+                  setError={setError}
+                  isPending={isPending}
+                  handleDelete={handleDelete}
+                  handleToggleComplete={handleToggleComplete}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 탭 3: 완료된 목록 */}
+      {activeTab === "completed" && (
+        <div>
+          {completedPosts.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200 text-zinc-400 text-sm">
+              완료된 POP 요청이 없습니다.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {completedPosts.map((post) => (
+                <PostCard 
+                  key={post.id} 
+                  post={post} 
+                  highlightedId={highlightedId} 
+                  deletePasswordModalId={deletePasswordModalId}
+                  passwordInput={passwordInput}
+                  setPasswordInput={setPasswordInput}
+                  setDeletePasswordModalId={setDeletePasswordModalId}
+                  error={error}
+                  setError={setError}
+                  isPending={isPending}
+                  handleDelete={handleDelete}
+                  handleToggleComplete={handleToggleComplete}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 개별 게시물 카드 컴포넌트
+function PostCard({ post, highlightedId, deletePasswordModalId, passwordInput, setPasswordInput, setDeletePasswordModalId, error, setError, isPending, handleDelete, handleToggleComplete }: any) {
+  const isHighlighted = highlightedId === post.id;
+
+  return (
+    <div
+      className={`p-5 rounded-2xl border shadow-sm space-y-3 transition-all duration-700 ${
+        isHighlighted
+          ? "bg-amber-100 border-amber-400 scale-[1.01] shadow-md ring-2 ring-amber-300"
+          : post.completed
+          ? "bg-zinc-50 border-zinc-300 opacity-80"
+          : "bg-white border-zinc-200"
+      }`}
+    >
+      <div className="flex justify-between items-start border-b pb-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full font-extrabold">
+              {post.company_name || "업체명 미입력"}
+            </span>
+            <span className={`font-bold text-sm ${post.completed ? "text-zinc-500 line-through" : "text-zinc-900"}`}>
+              신청자: {post.nickname} {post.phone && `(${post.phone})`}
+            </span>
+            {isHighlighted && (
+              <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-extrabold animate-bounce">
+                NEW!
+              </span>
+            )}
+            {post.completed && (
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                처리완료
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-zinc-400">
+            신청일시: {new Date(post.created_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleToggleComplete(post.id, post.completed)}
+            className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition ${
+              post.completed ? "bg-zinc-200 text-zinc-700 hover:bg-zinc-300" : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+            }`}
+          >
+            {post.completed ? "완료취소" : "처리완료"}
+          </button>
+          <button
+            onClick={() => {
+              setDeletePasswordModalId(post.id);
+              setPasswordInput("");
+              setError("");
+            }}
+            className="text-xs text-zinc-400 hover:text-red-600 transition px-1"
+          >
+            삭제
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-zinc-50 p-3 rounded-xl text-xs">
+        <div>
+          <span className="text-zinc-400 block">상품명</span>
+          <span className="font-bold text-zinc-800 text-sm">{post.product_name || "-"}</span>
+        </div>
+        <div>
+          <span className="text-zinc-400 block">규격 / 중량</span>
+          <span className="font-semibold text-zinc-700">{post.weight || "-"}</span>
+        </div>
+        <div>
+          <span className="text-zinc-400 block">정상가 / 행사가</span>
+          <span className="font-semibold text-zinc-700">
+            {post.regular_price || "-"} / <strong className="text-red-600">{post.sale_price || "-"}</strong>
+          </span>
+        </div>
+        <div>
+          <span className="text-zinc-400 block">행사기간</span>
+          <span className="font-semibold text-zinc-700">{post.promo_period || "-"}</span>
+        </div>
+        <div>
+          <span className="text-zinc-400 block">사이즈 (종이/방향)</span>
+          <span className="font-semibold text-indigo-600">{post.size_quantity || "-"}</span>
+        </div>
+        <div>
+          <span className="text-zinc-400 block">원산지</span>
+          <span className="font-semibold text-zinc-700">{post.origin || "-"}</span>
+        </div>
+        <div className="col-span-2">
+          <span className="text-zinc-400 block">바코드</span>
+          <span className="font-mono text-zinc-600">{post.barcode || "-"}</span>
+        </div>
+      </div>
+
+      {post.content && (
+        <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-200/60 text-xs space-y-1">
+          <span className="font-bold text-amber-800">비고 및 요청사항:</span>
+          <p className="text-zinc-700 whitespace-pre-wrap">{post.content}</p>
+        </div>
+      )}
+
+      {deletePasswordModalId === post.id && (
+        <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
+          <p className="text-xs font-bold text-red-700">관리자 비밀번호를 입력하세요</p>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              placeholder="비밀번호"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              className="flex-1 rounded-lg border border-red-300 px-3 py-1.5 text-sm bg-white focus:outline-none"
+              autoFocus
+            />
+            <button
+              onClick={() => handleDelete(post.id)}
+              disabled={isPending}
+              className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 transition"
+            >
+              삭제확인
+            </button>
+            <button
+              onClick={() => setDeletePasswordModalId(null)}
+              className="bg-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-zinc-300 transition"
+            >
+              취소
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}

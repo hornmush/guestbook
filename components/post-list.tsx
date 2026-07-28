@@ -123,10 +123,16 @@ export function PostList({ posts: initialPosts, roomId, slug, writeFormNode }: P
   });
 
   return (
-    <div className="space-y-4">
-      {/* 상단 고정(Sticky) 탭 네비게이션 */}
-      <div className="sticky top-0 z-20 bg-zinc-50/95 backdrop-blur-md pb-2 pt-1">
-        <div className="flex rounded-xl bg-zinc-200/80 p-1.5 border border-zinc-300 shadow-sm">
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* 타이틀 및 3항목 탭 네비게이션 영역 */}
+      <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-lg sm:text-xl font-extrabold text-zinc-900">POP 요청 관리</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">매장 행사 및 상품 POP 신청 내역을 작성하고 처리 상태를 관리하세요.</p>
+        </div>
+
+        {/* 타이틀 바로 밑에 배치된 3항목 탭 */}
+        <div className="flex rounded-xl bg-zinc-100 p-1.5 border border-zinc-200">
           <button
             onClick={() => setActiveTab("write")}
             className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition ${

@@ -29,12 +29,13 @@ type PostListProps = {
   roomId: string;
   slug?: string;
   writeFormNode?: React.ReactNode;
+  emptyMessage?: string; // <-- 빌드 에러 해결을 위해 추가된 속성
 };
 
-export function PostList({ posts: initialPosts, roomId, slug, writeFormNode }: PostListProps) {
+export function PostList({ posts: initialPosts, roomId, slug, writeFormNode, emptyMessage }: PostListProps) {
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>(initialPosts);
-  const [activeTab, setActiveTab] = useState<"write" | "list" | "completed">("write"); // 기본 탭을 '요청 작성'으로 설정하거나 'list'로 설정 가능
+  const [activeTab, setActiveTab] = useState<"write" | "list" | "completed">("write");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
@@ -188,9 +189,7 @@ export function PostList({ posts: initialPosts, roomId, slug, writeFormNode }: P
         <div>
           {filteredPosts.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200 text-zinc-400 text-sm">
-              {activeTab === "list"
-                ? "진행중인 POP 요청이 없습니다."
-                : "완료된 POP 요청이 없습니다."}
+              {emptyMessage || (activeTab === "list" ? "진행중인 POP 요청이 없습니다." : "완료된 POP 요청이 없습니다.")}
             </div>
           ) : (
             <div className="space-y-4">

@@ -24,4 +24,4 @@ export default async function ListPage({ params }: { params: { slug: string } })
       <PostList posts={activePosts} roomId="room_id_here" slug={slug} emptyMessage="진행중인 POP 요청이 없습니다." />
     </main>
   );
-}v
+}

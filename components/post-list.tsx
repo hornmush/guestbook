@@ -34,7 +34,7 @@ type PostListProps = {
 export function PostList({ posts: initialPosts, roomId, slug, writeFormNode }: PostListProps) {
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>(initialPosts);
-  const [activeTab, setActiveTab] = useState<"write" | "list" | "completed">("list");
+  const [activeTab, setActiveTab] = useState<"write" | "list" | "completed">("write"); // 기본 탭을 '요청 작성'으로 설정하거나 'list'로 설정 가능
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
@@ -124,14 +124,14 @@ export function PostList({ posts: initialPosts, roomId, slug, writeFormNode }: P
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* 타이틀 및 3항목 탭 네비게이션 영역 */}
+      {/* 1. 상단 타이틀 및 3항목 탭 네비게이션 */}
       <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
         <div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-zinc-900">POP 요청 관리</h2>
-          <p className="text-xs text-zinc-500 mt-0.5">매장 행사 및 상품 POP 신청 내역을 작성하고 처리 상태를 관리하세요.</p>
+          <h2 className="text-lg sm:text-xl font-extrabold text-zinc-900">칠곡농협 POP 요청</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">매장 행사 및 상품 POP 제작 요청을 남기고 처리 상태를 관리하세요.</p>
         </div>
 
-        {/* 타이틀 바로 밑에 배치된 3항목 탭 */}
+        {/* 탭 버튼들 */}
         <div className="flex rounded-xl bg-zinc-100 p-1.5 border border-zinc-200">
           <button
             onClick={() => setActiveTab("write")}
@@ -172,19 +172,18 @@ export function PostList({ posts: initialPosts, roomId, slug, writeFormNode }: P
         </div>
       </div>
 
-      {/* 탭 1: 요청 작성 화면 */}
+      {/* 2. 탭 1: 요청 작성 화면 */}
       {activeTab === "write" && (
-        <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-          <h3 className="font-bold text-zinc-800 text-base border-b pb-2">신규 POP 요청 작성</h3>
+        <div>
           {writeFormNode || (
-            <div className="text-center py-10 text-zinc-400 text-sm">
-              작성 폼 컴포넌트를 이 위치에 연결하세요.
+            <div className="text-center py-10 bg-white rounded-2xl border border-zinc-200 text-zinc-400 text-sm">
+              작성 폼 컴포넌트가 연결되지 않았습니다.
             </div>
           )}
         </div>
       )}
 
-      {/* 탭 2 & 3: 요청 목록 / 완료된 목록 화면 */}
+      {/* 3. 탭 2 & 3: 요청 목록 / 완료된 목록 화면 */}
       {activeTab !== "write" && (
         <div>
           {filteredPosts.length === 0 ? (

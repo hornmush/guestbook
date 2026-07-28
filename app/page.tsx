@@ -31,9 +31,8 @@ export default function MainPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [roomId, setRoomId] = useState<string>("");
   
-  // 기본 화면을 'write'(2번 박스: 작성 폼)로 설정하여 링크 접속 시 먼저 보이게 합니다.
   const [currentView, setCurrentView] = useState<"write" | "list">("write"); 
-  const [activeTab, setActiveTab] = useState<"list" | "completed">("list"); // 목록 내의 탭 (요청 목록 / 완료된 목록)
+  const [activeTab, setActiveTab] = useState<"list" | "completed">("list");
 
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
@@ -128,7 +127,6 @@ export default function MainPage() {
   const handleToggleComplete = (postId: string, currentCompleted: boolean) => {
     startTransition(async () => {
       const formData = new FormData();
-      formData.append("postId", formData.append ? "" : "" ); // 유지
       formData.append("postId", postId);
       formData.append("completed", String(!currentCompleted));
 

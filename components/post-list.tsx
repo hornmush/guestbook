@@ -28,14 +28,13 @@ type PostListProps = {
   posts: Post[];
   roomId: string;
   slug?: string;
-  // 요청 작성 폼 컴포넌트나 상태를 props로 넘겨받거나 내부에서 렌더링할 수 있습니다.
-  writeFormNode?: React.ReactNode; 
+  writeFormNode?: React.ReactNode;
 };
 
 export function PostList({ posts: initialPosts, roomId, slug, writeFormNode }: PostListProps) {
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>(initialPosts);
-  const [activeTab, setActiveTab] = useState<"write" | "list" | "completed">("list"); // 기본 탭: 요청 목록
+  const [activeTab, setActiveTab] = useState<"write" | "list" | "completed">("list");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
@@ -117,7 +116,6 @@ export function PostList({ posts: initialPosts, roomId, slug, writeFormNode }: P
     });
   };
 
-  // 탭에 따라 게시물 필터링
   const filteredPosts = posts.filter((post) => {
     if (activeTab === "list") return !post.completed;
     if (activeTab === "completed") return post.completed;
@@ -125,52 +123,53 @@ export function PostList({ posts: initialPosts, roomId, slug, writeFormNode }: P
   });
 
   return (
-    <div className="space-y-6">
-      {/* 상단 탭 네비게이션 */}
-      <div className="flex rounded-xl bg-zinc-100 p-1.5 border border-zinc-200">
-        <button
-          onClick={() => setActiveTab("write")}
-          className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition ${
-            activeTab === "write"
-              ? "bg-white text-indigo-600 shadow-sm"
-              : "text-zinc-500 hover:text-zinc-800"
-          }`}
-        >
-          1. 요청 작성
-        </button>
-        <button
-          onClick={() => setActiveTab("list")}
-          className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
-            activeTab === "list"
-              ? "bg-white text-indigo-600 shadow-sm"
-              : "text-zinc-500 hover:text-zinc-800"
-          }`}
-        >
-          2. 요청 목록
-          <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full text-[10px]">
-            {posts.filter((p) => !p.completed).length}
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab("completed")}
-          className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
-            activeTab === "completed"
-              ? "bg-white text-emerald-600 shadow-sm"
-              : "text-zinc-500 hover:text-zinc-800"
-          }`}
-        >
-          3. 완료된 목록
-          <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full text-[10px]">
-            {posts.filter((p) => p.completed).length}
-          </span>
-        </button>
+    <div className="space-y-4">
+      {/* 상단 고정(Sticky) 탭 네비게이션 */}
+      <div className="sticky top-0 z-20 bg-zinc-50/95 backdrop-blur-md pb-2 pt-1">
+        <div className="flex rounded-xl bg-zinc-200/80 p-1.5 border border-zinc-300 shadow-sm">
+          <button
+            onClick={() => setActiveTab("write")}
+            className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition ${
+              activeTab === "write"
+                ? "bg-white text-indigo-600 shadow-sm"
+                : "text-zinc-600 hover:text-zinc-900"
+            }`}
+          >
+            1. 요청 작성
+          </button>
+          <button
+            onClick={() => setActiveTab("list")}
+            className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+              activeTab === "list"
+                ? "bg-white text-indigo-600 shadow-sm"
+                : "text-zinc-600 hover:text-zinc-900"
+            }`}
+          >
+            2. 요청 목록
+            <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full text-[10px]">
+              {posts.filter((p) => !p.completed).length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("completed")}
+            className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+              activeTab === "completed"
+                ? "bg-white text-emerald-600 shadow-sm"
+                : "text-zinc-600 hover:text-zinc-900"
+            }`}
+          >
+            3. 완료된 목록
+            <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full text-[10px]">
+              {posts.filter((p) => p.completed).length}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* 탭 1: 요청 작성 화면 */}
       {activeTab === "write" && (
         <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
           <h3 className="font-bold text-zinc-800 text-base border-b pb-2">신규 POP 요청 작성</h3>
-          {/* 작성 폼 컴포넌트가 따로 있다면 이곳에 배치하거나 props로 전달받은 폼을 렌더링 */}
           {writeFormNode || (
             <div className="text-center py-10 text-zinc-400 text-sm">
               작성 폼 컴포넌트를 이 위치에 연결하세요.

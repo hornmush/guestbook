@@ -31,14 +31,14 @@ export default function SlugPage({ params }: { params: { slug: string } }) {
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [roomId, setRoomId] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"list" | "completed">("list"); // 요청 작성 탭 삭제됨 (기본: 요청 목록)
+  const [activeTab, setActiveTab] = useState<"list" | "completed">("list");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  // 초기 데이터 로딩 및 실시간 구독
+  // 초기 데이터 로딩: 오래된 순(ascending: true)으로 가져와서 맨 처음에 올린 글이 위에 위치
   useEffect(() => {
     async function fetchRoomAndPosts() {
       const { data: room } = await supabase
@@ -53,7 +53,7 @@ export default function SlugPage({ params }: { params: { slug: string } }) {
           .from("posts")
           .select("*")
           .eq("room_id", room.id)
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: true }); // 오래된 순 고정
 
         if (initialPosts) setPosts(initialPosts);
       }
@@ -71,7 +71,8 @@ export default function SlugPage({ params }: { params: { slug: string } }) {
         { event: "INSERT", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
         (payload) => {
           const newPost = payload.new as Post;
-          setPosts((prev) => [newPost, ...prev]);
+          // 새 글이 등록되면 맨 아래로 추가되도록 설정
+          setPosts((prev) => [...prev, newPost]);
           setHighlightedId(newPost.id);
           setTimeout(() => setHighlightedId(null), 3000);
         }
@@ -124,6 +125,10 @@ export default function SlugPage({ params }: { params: { slug: string } }) {
   };
 
   const handleToggleComplete = (postId: string, currentCompleted: boolean) => {
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postId ? { ...p, completed: !currentCompleted } : p))
+    );
+
     startTransition(async () => {
       const formData = new FormData();
       formData.append("postId", postId);
@@ -142,14 +147,13 @@ export default function SlugPage({ params }: { params: { slug: string } }) {
     <main className="min-h-screen bg-zinc-50 py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* 상단 타이틀 및 2개 탭 (요청 목록 / 완료된 목록) */}
+        {/* 상단 타이틀 및 2개 탭 */}
         <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
           <div>
             <h1 className="text-lg sm:text-xl font-extrabold text-zinc-900">칠곡농협 POP 요청</h1>
             <p className="text-xs text-zinc-500 mt-0.5">매장 행사 및 상품 POP 제작 신청 내역을 관리하세요.</p>
           </div>
 
-          {/* 요청 작성 탭이 삭제되고 2개 항목만 남은 탭 */}
           <div className="flex rounded-xl bg-zinc-100 p-1.5 border border-zinc-200">
             <button
               onClick={() => setActiveTab("list")}
@@ -176,7 +180,7 @@ export default function SlugPage({ params }: { params: { slug: string } }) {
           </div>
         </div>
 
-        {/* 1단계: 전체 POP 요청 목록 (위쪽으로 이동) */}
+        {/* 요청 목록 */}
         <div>
           {filteredPosts.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200 text-zinc-400 text-sm">
@@ -321,7 +325,7 @@ export default function SlugPage({ params }: { params: { slug: string } }) {
           )}
         </div>
 
-        {/* 2단계: POP 요청 쓰기 폼 (아래쪽으로 이동) */}
+        {/* 요청 쓰기 폼 */}
         {roomId && (
           <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4 mt-8">
             <h3 className="font-bold text-zinc-800 text-base border-b pb-2">신규 POP 제작 요청서 작성</h3>

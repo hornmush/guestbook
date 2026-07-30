@@ -32,10 +32,22 @@ type PostListProps = {
   emptyMessage?: string;
 };
 
+// 완벽한 내림차순(최신순) 정렬 함수 (시간이 같으면 ID 기준 2차 정렬)
+const sortPostsDescending = (postsArray: Post[]) => {
+  return [...postsArray].sort((a, b) => {
+    const timeA = new Date(a.created_at).getTime();
+    const timeB = new Date(b.created_at).getTime();
+    if (timeB !== timeA) {
+      return timeB - timeA; // 최신 시간순
+    }
+    return b.id.localeCompare(a.id); // 시간이 완전히 같을 경우 ID 역순
+  });
+};
+
 export function PostList({ posts: initialPosts, roomId, slug, writeFormNode, emptyMessage }: PostListProps) {
   const router = useRouter();
   
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [posts, setPosts] = useState<Post[]>(() => sortPostsDescending(initialPosts));
   const [activeTab, setActiveTab] = useState<"write" | "list" | "completed">("write");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [deletePasswordModalId, setDeletePasswordModalId] = useState<string | null>(null);
@@ -44,7 +56,7 @@ export function PostList({ posts: initialPosts, roomId, slug, writeFormNode, emp
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    setPosts(initialPosts);
+    setPosts(sortPostsDescending(initialPosts));
   }, [initialPosts]);
 
   useEffect(() => {
@@ -55,10 +67,7 @@ export function PostList({ posts: initialPosts, roomId, slug, writeFormNode, emp
         { event: "INSERT", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
         (payload) => {
           const newPost = payload.new as Post;
-          setPosts((prev) => {
-            const updated = [...prev, newPost];
-            return updated.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-          });
+          setPosts((prev) => sortPostsDescending([...prev, newPost]));
           setHighlightedId(newPost.id);
           setTimeout(() => setHighlightedId(null), 3000);
         }
@@ -197,9 +206,8 @@ export function PostList({ posts: initialPosts, roomId, slug, writeFormNode, emp
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredPosts.map((post, index) => {
+              {filteredPosts.map((post) => {
                 const isHighlighted = highlightedId === post.id;
-                const sequenceNumber = index + 1; // 순번 부여
 
                 return (
                   <div
@@ -212,14 +220,10 @@ export function PostList({ posts: initialPosts, roomId, slug, writeFormNode, emp
                         : "bg-white border-zinc-200"
                     }`}
                   >
-                    {/* 상단: 순번, 업체명, 신청자, 연락처, 완료/삭제 버튼 */}
+                    {/* 상단: 업체명, 신청자, 연락처, 완료/삭제 버튼 */}
                     <div className="flex justify-between items-start border-b pb-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          {/* 고유 순번 배지 추가 */}
-                          <span className="bg-zinc-900 text-white text-xs px-2.5 py-1 rounded-lg font-black shadow-sm">
-                            #{sequenceNumber}
-                          </span>
                           <span className="bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full font-extrabold">
                             {post.company_name || "업체명 미입력"}
                           </span>

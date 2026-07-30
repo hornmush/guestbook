@@ -53,7 +53,7 @@ export default function SlugPage({ params }: { params: { slug: string } }) {
           .from("posts")
           .select("*")
           .eq("room_id", room.id)
-          .order("created_at", { ascending: true }); // 오래된 순 고정
+          .order("created_at", { ascending: false }); // 오래된 순 고정
 
         if (initialPosts) setPosts(initialPosts);
       }

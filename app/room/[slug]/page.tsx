@@ -52,7 +52,7 @@ export default function SlugPage({ params }: { params: { slug: string } }) {
           .from("posts")
           .select("*")
           .eq("room_id", room.id)
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: false });
 
         if (initialPosts) setPosts(initialPosts);
       }

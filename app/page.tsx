@@ -25,6 +25,22 @@ type Post = {
   created_at: string;
 };
 
+// [오름차순 정렬] 오래된 신청(과거)이 위로 오고, 최신 신청이 아래로 쌓임
+const sortPostsAscending = (postsArray: Post[]) => {
+  return [...postsArray].sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    
+    const validTimeA = isNaN(timeA) ? 0 : timeA;
+    const validTimeB = isNaN(timeB) ? 0 : timeB;
+
+    if (validTimeA !== validTimeB) {
+      return validTimeA - validTimeB; // 과거 시간이 앞으로 (오름차순)
+    }
+    return (a.id || "").localeCompare(b.id || "");
+  });
+};
+
 export default function MainPage() {
   const router = useRouter();
 
@@ -55,9 +71,11 @@ export default function MainPage() {
           .from("posts")
           .select("*")
           .eq("room_id", targetRoomId)
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: true }); // DB 쿼리도 오름차순 적용
 
-        if (initialPosts) setPosts(initialPosts);
+        if (initialPosts) {
+          setPosts(sortPostsAscending(initialPosts));
+        }
       }
     }
     fetchRoomAndPosts();
@@ -72,8 +90,14 @@ export default function MainPage() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
         (payload) => {
-          const newPost = payload.new as Post;
-          setPosts((prev) => [newPost, ...prev]);
+          const rawPost = payload.new as Post;
+          const newPost: Post = {
+            ...rawPost,
+            created_at: rawPost.created_at || new Date().toISOString(),
+          };
+          
+          // 새 글은 목록의 맨 아래에 추가되도록 정렬
+          setPosts((prev) => sortPostsAscending([...prev, newPost]));
           setHighlightedId(newPost.id);
           setTimeout(() => setHighlightedId(null), 3000);
         }
@@ -83,7 +107,7 @@ export default function MainPage() {
         { event: "UPDATE", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
         (payload) => {
           const updated = payload.new as Post;
-          setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+          setPosts((prev) => sortPostsAscending(prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))));
         }
       )
       .on(
@@ -142,7 +166,6 @@ export default function MainPage() {
     <main className="min-h-screen bg-zinc-50 py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* 상단 화면 전환 네비게이션 바 */}
         <div className="bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-3">
           <div>
             <h1 className="text-lg font-extrabold text-zinc-900">칠곡농협 POP 요청</h1>
@@ -172,7 +195,6 @@ export default function MainPage() {
           </div>
         </div>
 
-        {/* ──────── [2번 박스] 작성 폼 화면 (링크 접속 시 기본으로 먼저 보임) ──────── */}
         {currentView === "write" && roomId && (
           <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
             <h2 className="font-bold text-zinc-800 text-base border-b pb-2">신규 POP 제작 요청서 작성</h2>
@@ -180,10 +202,8 @@ export default function MainPage() {
           </div>
         )}
 
-        {/* ──────── [1번 박스] 요청 및 완료 목록 페이지 (버튼을 누를 때 나옴) ──────── */}
         {currentView === "list" && (
           <div className="space-y-4">
-            {/* 1번 박스 내부의 탭 (요청 목록 / 완료된 목록) */}
             <div className="bg-white p-3 rounded-2xl border border-zinc-200 shadow-sm">
               <div className="flex rounded-xl bg-zinc-100 p-1.5 border border-zinc-200">
                 <button
@@ -211,7 +231,6 @@ export default function MainPage() {
               </div>
             </div>
 
-            {/* 목록 내용 출력 */}
             {filteredPosts.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200 text-zinc-400 text-sm">
                 {activeTab === "list" ? "진행중인 POP 요청이 없습니다." : "완료된 POP 요청이 없습니다."}

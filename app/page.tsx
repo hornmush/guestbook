@@ -25,7 +25,7 @@ type Post = {
   created_at: string;
 };
 
-// [오름차순 정렬] 오래된 신청(과거)이 위로 오고, 최신 신청이 아래로 쌓임
+// 1. 요청 목록용 오름차순 정렬 (오래된 순)
 const sortPostsAscending = (postsArray: Post[]) => {
   return [...postsArray].sort((a, b) => {
     const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -35,9 +35,25 @@ const sortPostsAscending = (postsArray: Post[]) => {
     const validTimeB = isNaN(timeB) ? 0 : timeB;
 
     if (validTimeA !== validTimeB) {
-      return validTimeA - validTimeB; // 과거 시간이 앞으로 (오름차순)
+      return validTimeA - validTimeB;
     }
     return (a.id || "").localeCompare(b.id || "");
+  });
+};
+
+// 2. 완료된 목록용 내림차순 정렬 (최신 순)
+const sortPostsDescending = (postsArray: Post[]) => {
+  return [...postsArray].sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    
+    const validTimeA = isNaN(timeA) ? 0 : timeA;
+    const validTimeB = isNaN(timeB) ? 0 : timeB;
+
+    if (validTimeB !== validTimeA) {
+      return validTimeB - validTimeA;
+    }
+    return (b.id || "").localeCompare(a.id || "");
   });
 };
 
@@ -70,11 +86,10 @@ export default function MainPage() {
         const { data: initialPosts } = await supabase
           .from("posts")
           .select("*")
-          .eq("room_id", targetRoomId)
-          .order("created_at", { ascending: true }); // DB 쿼리도 오름차순 적용
+          .eq("room_id", targetRoomId);
 
         if (initialPosts) {
-          setPosts(sortPostsAscending(initialPosts));
+          setPosts(initialPosts);
         }
       }
     }
@@ -96,8 +111,7 @@ export default function MainPage() {
             created_at: rawPost.created_at || new Date().toISOString(),
           };
           
-          // 새 글은 목록의 맨 아래에 추가되도록 정렬
-          setPosts((prev) => sortPostsAscending([...prev, newPost]));
+          setPosts((prev) => [...prev, newPost]);
           setHighlightedId(newPost.id);
           setTimeout(() => setHighlightedId(null), 3000);
         }
@@ -107,7 +121,7 @@ export default function MainPage() {
         { event: "UPDATE", schema: "public", table: "posts", filter: `room_id=eq.${roomId}` },
         (payload) => {
           const updated = payload.new as Post;
-          setPosts((prev) => sortPostsAscending(prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))));
+          setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
         }
       )
       .on(
@@ -158,8 +172,9 @@ export default function MainPage() {
     });
   };
 
-  const activePosts = posts.filter((p) => !p.completed);
-  const completedPosts = posts.filter((p) => p.completed);
+  // 요청 목록은 오름차순(옛날 순), 완료된 목록은 내림차순(최신 순) 적용
+  const activePosts = sortPostsAscending(posts.filter((p) => !p.completed));
+  const completedPosts = sortPostsDescending(posts.filter((p) => p.completed));
   const filteredPosts = activeTab === "list" ? activePosts : completedPosts;
 
   return (

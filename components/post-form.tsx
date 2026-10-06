@@ -19,7 +19,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
   const [regularPrice, setRegularPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [promoPeriod, setPromoPeriod] = useState("");
-  const [sizeQuantity, setSizeQuantity] = useState("");
+  const [sizeQuantity, setSizeQuantity] = useState<string[]>([]);
   const [origin, setOrigin] = useState("");
   const [content, setContent] = useState("");
 
@@ -54,7 +54,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
       formData.append("regular_price", regularPrice);
       formData.append("sale_price", salePrice);
       formData.append("promo_period", promoPeriod);
-      formData.append("size_quantity", sizeQuantity);
+      formData.append("size_quantity", sizeQuantity.join(", "));
       formData.append("origin", origin);
       formData.append("content", content);
       if (slug) formData.append("slug", slug);
@@ -73,7 +73,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
         setRegularPrice("");
         setSalePrice("");
         setPromoPeriod("");
-        setSizeQuantity("");
+        setSizeQuantity([]);
         setOrigin("");
         setContent("");
         if (onCancel) onCancel();
@@ -204,13 +204,26 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-bold text-zinc-700 mb-1">사이즈 (종이, 가로 or 세로) <span className="text-zinc-400 font-normal">(선택)</span></label>
-          <input
-            type="text"
-            placeholder="예: A4, 세로형 / 4절, 가로형"
-            value={sizeQuantity}
-            onChange={(e) => setSizeQuantity(e.target.value)}
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-          />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {["A4 세로", "A4 가로", "A3", "A4 1/2", "A4 1/4"].map((size) => (
+              <label
+                key={size}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold cursor-pointer transition ${sizeQuantity.includes(size) ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-zinc-300 bg-white text-zinc-700"}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={sizeQuantity.includes(size)}
+                  onChange={(e) =>
+                    setSizeQuantity((prev) =>
+                      e.target.checked ? [...prev, size] : prev.filter((item) => item !== size)
+                    )
+                  }
+                  className="h-4 w-4 accent-indigo-600"
+                />
+                {size}
+              </label>
+            ))}
+          </div>
         </div>
         <div>
           <label className="block text-xs font-bold text-zinc-700 mb-1">원산지 <span className="text-zinc-400 font-normal">(선택)</span></label>

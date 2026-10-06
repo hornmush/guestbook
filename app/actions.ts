@@ -1,6 +1,7 @@
 "use server";
 
 import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 
@@ -25,6 +26,15 @@ export async function createRoom(formData?: FormData) {
   return { success: true, slug };
 }
 
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  return createClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 function getKoreaDate() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
@@ -45,8 +55,13 @@ export async function setMakerAttendance(formData: FormData) {
     return { error: "잘못된 상태입니다." };
   }
 
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    return { error: "서버 설정이 완료되지 않았습니다." };
+  }
+
   const now = new Date().toISOString();
-  const { error } = await supabase.from("daily_reception").upsert({
+  const { error } = await admin.from("daily_reception").upsert({
     work_date: getKoreaDate(),
     status,
     started_at: status === "OPEN" ? now : null,
@@ -77,7 +92,9 @@ export async function createPost(formData: FormData) {
   const content = (formData.get("content") as string)?.trim() || null;
   const slug = formData.get("slug") as string;
 
-  const { data: reception } = await supabase
+  const admin = getSupabaseAdmin();
+  const receptionClient = admin ?? supabase;
+  const { data: reception } = await receptionClient
     .from("daily_reception")
     .select("status")
     .eq("work_date", getKoreaDate())

@@ -30,7 +30,7 @@ export function PostForm({ roomId, slug, onCancel, receptionOpen = true }: PostF
 
   const warnIfClosed = () => {
     if (!receptionOpen && !closedWarningShown) {
-      alert("제작자가 출근해야 POP 작업을 신청할 수 있습니다.");
+      alert("신청은 가능하나, 제작자가 출근한 후 POP 작업이 진행됩니다. 양해 부탁드립니다.");
       setClosedWarningShown(true);
     }
   };

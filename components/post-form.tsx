@@ -24,6 +24,19 @@ export function PostForm({ roomId, slug, onCancel, receptionOpen = true }: PostF
   const [origin, setOrigin] = useState("");
   const [content, setContent] = useState("");
 
+  const frequentCompanies = [
+    { company: "대길", nickname: "김보명", phone: "01093658366" },
+    { company: "CJ", nickname: "손은주", phone: "01074506337" },
+    { company: "동원", nickname: "김해숙", phone: "01068000179" },
+    { company: "청정원", nickname: "박기순", phone: "01048129959" },
+  ];
+
+  const fillFrequentCompany = (company: string, nickname: string, phone: string) => {
+    setCompanyName(company);
+    setNickname(nickname);
+    setPhone(phone);
+  };
+
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
   const [closedWarningShown, setClosedWarningShown] = useState(false);
@@ -112,6 +125,21 @@ export function PostForm({ roomId, slug, onCancel, receptionOpen = true }: PostF
             className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
             required
           />
+          <div className="mt-2">
+            <p className="mb-1.5 text-[11px] font-semibold text-zinc-500">자주 쓰는 업체</p>
+            <div className="flex flex-wrap gap-1.5">
+              {frequentCompanies.map((item) => (
+                <button
+                  key={item.company}
+                  type="button"
+                  onClick={() => fillFrequentCompany(item.company, item.nickname, item.phone)}
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${companyName === item.company ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50"}`}
+                >
+                  {item.company}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div>
           <label className="block text-xs font-bold text-zinc-700 mb-1">

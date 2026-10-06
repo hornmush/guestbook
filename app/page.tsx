@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { deletePost, toggleComplete } from "@/app/actions";
+import { deletePost, toggleComplete, setMakerAttendance } from "@/app/actions";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { PostForm } from "@/components/post-form";
@@ -71,6 +71,9 @@ export default function MainPage() {
   const [passwordInput, setPasswordInput] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [receptionOpen, setReceptionOpen] = useState(false);
+  const [makerPassword, setMakerPassword] = useState("");
+  const [makerError, setMakerError] = useState("");
 
   useEffect(() => {
     async function fetchRoomAndPosts() {
@@ -94,6 +97,15 @@ export default function MainPage() {
       }
     }
     fetchRoomAndPosts();
+
+    async function fetchReception() {
+      const koreaDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit"
+      }).format(new Date());
+      const { data } = await supabase.from("daily_reception").select("status").eq("work_date", koreaDate).maybeSingle();
+      setReceptionOpen(data?.status === "OPEN");
+    }
+    fetchReception();
   }, []);
 
   useEffect(() => {
@@ -138,6 +150,22 @@ export default function MainPage() {
       supabase.removeChannel(channel);
     };
   }, [roomId]);
+
+  const handleMakerAttendance = (status: "OPEN" | "CLOSED") => {
+    setMakerError("");
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.append("password", makerPassword);
+      fd.append("status", status);
+      const res = await setMakerAttendance(fd);
+      if (res?.error) {
+        setMakerError(res.error);
+        return;
+      }
+      setReceptionOpen(status === "OPEN");
+      setMakerPassword("");
+    });
+  };
 
   const handleDelete = (postId: string) => {
     setError("");
@@ -187,7 +215,20 @@ export default function MainPage() {
             <p className="text-xs text-zinc-500">매장 행사 및 상품 POP 제작 관리 시스템</p>
           </div>
           
-          <div className="flex rounded-xl bg-zinc-100 p-1 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <div className="flex items-center justify-center gap-1">
+              <input type="password" inputMode="numeric" placeholder="제작자 비번" value={makerPassword}
+                onChange={(e) => setMakerPassword(e.target.value)}
+                className="w-24 rounded-lg border border-zinc-300 px-2 py-2 text-xs" />
+              <button onClick={() => handleMakerAttendance(receptionOpen ? "CLOSED" : "OPEN")} disabled={isPending}
+                className={`rounded-lg px-3 py-2 text-xs font-bold text-white ${receptionOpen ? "bg-red-600" : "bg-emerald-600"}`}>
+                {receptionOpen ? "퇴근" : "출근"}
+              </button>
+              <span className={`text-[11px] font-bold ${receptionOpen ? "text-emerald-600" : "text-zinc-400"}`}>
+                {receptionOpen ? "접수중" : "퇴근"}
+              </span>
+            </div>
+            <div className="flex rounded-xl bg-zinc-100 p-1">
             <button
               onClick={() => setCurrentView("write")}
               className={`flex-1 sm:flex-initial px-4 py-2 text-xs sm:text-sm font-bold rounded-lg transition ${
@@ -207,13 +248,15 @@ export default function MainPage() {
                 {activePosts.length}
               </span>
             </button>
+            </div>
           </div>
+          {makerError && <p className="w-full text-right text-xs text-red-600 font-semibold">{makerError}</p>}
         </div>
 
         {currentView === "write" && roomId && (
           <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
             <h2 className="font-bold text-zinc-800 text-base border-b pb-2">신규 POP 제작 요청서 작성</h2>
-            <PostForm roomId={roomId} />
+            <PostForm roomId={roomId} receptionOpen={receptionOpen} />
           </div>
         )}
 

@@ -7,9 +7,10 @@ type PostFormProps = {
   roomId: string;
   slug?: string;
   onCancel?: () => void;
+  receptionOpen?: boolean;
 };
 
-export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
+export function PostForm({ roomId, slug, onCancel, receptionOpen = true }: PostFormProps) {
   const [companyName, setCompanyName] = useState("");
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
@@ -25,6 +26,14 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
 
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [closedWarningShown, setClosedWarningShown] = useState(false);
+
+  const warnIfClosed = () => {
+    if (!receptionOpen && !closedWarningShown) {
+      alert("제작자가 출근해야 POP 작업을 신청할 수 있습니다.");
+      setClosedWarningShown(true);
+    }
+  };
 
   // 숫자만 입력되도록 필터링하는 헬퍼 함수
   const handleNumericChange = (setter: (val: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,6 +44,10 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!receptionOpen) {
+      warnIfClosed();
+      return;
+    }
 
     // 필수 항목 검증 (업체명, 신청자, 연락처)
     if (!companyName.trim() || !nickname.trim() || !phone.trim()) {
@@ -82,7 +95,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
+    <form onSubmit={handleSubmit} onFocusCapture={warnIfClosed} className="space-y-4 bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
       <h3 className="text-sm font-extrabold text-zinc-900 border-b pb-2">📋 신규 POP 제작 요청서 작성</h3>
 
       {/* 1단: 업체명 / 신청자 / 연락처 (필수) */}
@@ -265,10 +278,10 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
         )}
         <button
           type="submit"
-          disabled={isPending}
+          disabled={isPending || !receptionOpen}
           className="rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 transition shadow-sm disabled:opacity-50"
         >
-          {isPending ? "등록 중..." : "POP 요청 등록하기"}
+          {!receptionOpen ? "제작자 퇴근 - 접수 불가" : isPending ? "등록 중..." : "POP 요청 등록하기"}
         </button>
       </div>
     </form>

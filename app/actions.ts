@@ -25,6 +25,40 @@ export async function createRoom(formData?: FormData) {
   return { success: true, slug };
 }
 
+function getKoreaDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+export async function setMakerAttendance(formData: FormData) {
+  const password = (formData.get("password") as string) || "";
+  const status = formData.get("status") as string;
+
+  if (!process.env.MAKER_PASSWORD || password !== process.env.MAKER_PASSWORD) {
+    return { error: "제작자 비밀번호가 틀렸습니다." };
+  }
+  if (status !== "OPEN" && status !== "CLOSED") {
+    return { error: "잘못된 상태입니다." };
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("daily_reception").upsert({
+    work_date: getKoreaDate(),
+    status,
+    started_at: status === "OPEN" ? now : null,
+    closed_at: status === "CLOSED" ? now : null,
+    updated_at: now,
+  }, { onConflict: "work_date" });
+
+  if (error) return { error: "출퇴근 상태 변경 중 오류가 발생했습니다." };
+  revalidatePath("/");
+  return { success: true, status };
+}
+
 // 2. 신규 POP 요청 생성 (필수 3개 외 나머지는 빈칸 허용)
 export async function createPost(formData: FormData) {
   const room_id = formData.get("room_id") as string;
@@ -42,6 +76,16 @@ export async function createPost(formData: FormData) {
   const origin = (formData.get("origin") as string)?.trim() || null;
   const content = (formData.get("content") as string)?.trim() || null;
   const slug = formData.get("slug") as string;
+
+  const { data: reception } = await supabase
+    .from("daily_reception")
+    .select("status")
+    .eq("work_date", getKoreaDate())
+    .maybeSingle();
+
+  if (reception?.status !== "OPEN") {
+    return { error: "제작자가 출근해야 POP 작업을 신청할 수 있습니다." };
+  }
 
   // 필수 기재 항목 검증 (업체명, 신청자, 연락처)
   if (!company_name || !nickname || !phone) {

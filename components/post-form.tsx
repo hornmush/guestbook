@@ -28,6 +28,7 @@ export function PostForm({ roomId, slug, onCancel }: PostFormProps) {
     { company: "CJ", nickname: "손은주", phone: "01074506337" },
     { company: "동원", nickname: "김해숙", phone: "01068000179" },
     { company: "청정원", nickname: "박기순", phone: "01048129959" },
+    { company: "사랑해푸드", nickname: "이경임", phone: "01022168444" },
   ];
 
   const fillFrequentCompany = (company: string, nickname: string, phone: string) => {
